@@ -2,20 +2,26 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../models/event.dart';
+import '../../data/models/activity.dart';
 
-class EventCard extends StatelessWidget {
-  const EventCard({super.key, required this.event, required this.onTap});
+class ActivityCard extends StatelessWidget {
+  const ActivityCard({
+    super.key,
+    required this.activity,
+    required this.onTap,
+    this.onMorePressed,
+  });
 
-  final Event event;
+  final Activity activity;
   final VoidCallback onTap;
+  final VoidCallback? onMorePressed;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -25,37 +31,32 @@ class EventCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      event.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            activity.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
+                        ),
+                        if (onMorePressed != null)
+                          IconButton(
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: onMorePressed,
+                            splashRadius: 20,
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '建立於 ${_formatDate(event.createdAt)}',
+                      'Created ${_formatDate(activity.createdAt)} · ${activity.photoCount} photos',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.black54,
                           ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.camera_alt_outlined,
-                          size: 16,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${event.photoCount} 張照片',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.black54,
-                              ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
@@ -66,7 +67,7 @@ class EventCard extends StatelessWidget {
                 child: SizedBox(
                   width: 92,
                   height: 92,
-                  child: event.latestPhotoPath == null
+                  child: activity.coverPhotoPath == null
                       ? DecoratedBox(
                           decoration: BoxDecoration(
                             color: colorScheme.primary.withValues(alpha: 0.08),
@@ -78,9 +79,9 @@ class EventCard extends StatelessWidget {
                           ),
                         )
                       : Hero(
-                          tag: 'cover_${event.id}',
+                          tag: 'activity_cover_${activity.id}',
                           child: Image.file(
-                            File(event.latestPhotoPath!),
+                            File(activity.coverPhotoPath!),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -95,7 +96,6 @@ class EventCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     String twoDigits(int value) => value.toString().padLeft(2, '0');
-    return '${date.year}/${twoDigits(date.month)}/${twoDigits(date.day)} '
-        '${twoDigits(date.hour)}:${twoDigits(date.minute)}';
+    return '${date.year}/${twoDigits(date.month)}/${twoDigits(date.day)}';
   }
 }

@@ -61,14 +61,15 @@ class _ActivityDetailView extends StatelessWidget {
                   child: Column(
                     children: [
                       Expanded(
-                        flex: 5,
+                        flex: 6,
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 6, 16, 12),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-                              const headerSpacing = 12.0;
-                              const minHeaderHeight = 132.0;
-                              const maxHeaderHeight = 200.0;
+                              const headerSpacing = 6.0;
+                              const minHeaderHeight = 96.0;
+                              const maxHeaderHeight = 140.0;
 
                               final headerContent = selectedRound != null
                                   ? _RoundHeader(
@@ -110,7 +111,7 @@ class _ActivityDetailView extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  SizedBox(height: headerSpacing),
+                                  SizedBox(height: headerSpacing / 2),
                                   Expanded(
                                     child: LayoutBuilder(
                                       builder: (context, targetConstraints) {
@@ -118,10 +119,7 @@ class _ActivityDetailView extends StatelessWidget {
                                           targetConstraints.maxWidth,
                                           targetConstraints.maxHeight,
                                         );
-                                        final diameter = math.min(
-                                          ArcheryRepository.targetRadius * 2,
-                                          available,
-                                        );
+                                        final diameter = available;
                                         final targetSize = Size.square(
                                           diameter,
                                         );
@@ -179,7 +177,7 @@ class _ActivityDetailView extends StatelessWidget {
                         ),
                       ),
                       const Divider(height: 1),
-                      const Expanded(flex: 5, child: _RoundList()),
+                      const Expanded(flex: 4, child: _RoundList()),
                     ],
                   ),
                 ),
@@ -269,15 +267,6 @@ class _NoRoundHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: const [
-            _SummaryChip(label: 'Score', value: '0'),
-            _SummaryChip(label: 'Arrows', value: '0 / 6'),
-          ],
-        ),
-        const SizedBox(height: 8),
         Text(
           'Tap the target after adding a round to log your arrows.',
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
@@ -296,6 +285,8 @@ class _RoundHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sortedArrows = [...round.arrows]
+      ..sort((a, b) => b.score.compareTo(a.score));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -306,22 +297,33 @@ class _RoundHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            _SummaryChip(label: 'Score', value: '${round.totalScore}'),
-            _SummaryChip(label: 'Arrows', value: '${round.arrows.length} / 6'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (round.arrows.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: round.arrows
-                .map((arrow) => Chip(label: Text('${arrow.score}')))
-                .toList(),
+        if (sortedArrows.isNotEmpty)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 8.0;
+              final count = sortedArrows.length;
+              final availableWidth = constraints.maxWidth;
+              final totalSpacing = spacing * (count - 1);
+              final usable = availableWidth - totalSpacing;
+              final maxPerItem = usable > 0 ? usable / count : availableWidth;
+              final pillWidth = math.min(
+                _ArrowScorePill.fixedWidth,
+                maxPerItem,
+              );
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < count; i++) ...[
+                    SizedBox(
+                      width: pillWidth,
+                      child: _ArrowScorePill(score: sortedArrows[i].score),
+                    ),
+                    if (i != count - 1) const SizedBox(width: spacing),
+                  ],
+                ],
+              );
+            },
           )
         else
           Text(
@@ -333,41 +335,84 @@ class _RoundHeader extends StatelessWidget {
   }
 }
 
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({required this.label, required this.value});
+class _ArrowScorePill extends StatelessWidget {
+  const _ArrowScorePill({required this.score});
 
-  final String label;
-  final String value;
+  final int score;
+  static const double fixedWidth = 55.0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final base = colorScheme.primary;
+    final hslBase = HSLColor.fromColor(base);
+    final lighter =
+        hslBase.withLightness(math.min(hslBase.lightness + 0.18, 1.0)).toColor();
+    final darker =
+        hslBase.withLightness(math.max(hslBase.lightness - 0.10, 0.0)).toColor();
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+        gradient: LinearGradient(
+          colors: [lighter, darker],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: colorScheme.onPrimary.withOpacity(0.18),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: base.withOpacity(0.22),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.onPrimary.withOpacity(0.16),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Text(
+                  '$score',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.onPrimary,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

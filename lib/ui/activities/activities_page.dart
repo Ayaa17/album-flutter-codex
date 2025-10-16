@@ -18,28 +18,37 @@ class ActivitiesPage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: BlocConsumer<ActivityBloc, ActivityState>(
-          listenWhen: (previous, current) => previous.message != current.message,
+          listenWhen: (previous, current) =>
+              previous.message != current.message,
           listener: (context, state) {
             final message = state.message;
             if (message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(message)));
             }
           },
           builder: (context, state) {
-            if (state.status == ActivityStatus.loading && state.activities.isEmpty) {
+            if (state.status == ActivityStatus.loading &&
+                state.activities.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
             if (state.activities.isEmpty) {
               return RefreshIndicator(
-                onRefresh: () async => context.read<ActivityBloc>().add(const ActivityRefreshed()),
+                onRefresh: () async =>
+                    context.read<ActivityBloc>().add(const ActivityRefreshed()),
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 48,
+                  ),
                   children: const [
                     SizedBox(height: 80),
                     EmptyState(
                       icon: Icons.photo_album_outlined,
-                      title: '還沒有活動',
-                      message: '透過右下角按鈕新增活動或從首頁快速拍照。',
+                      title: 'No activities yet',
+                      message:
+                          'Use the button below or the Home tab to add your first archery session.',
                     ),
                   ],
                 ),
@@ -47,7 +56,8 @@ class ActivitiesPage extends StatelessWidget {
             }
 
             return RefreshIndicator(
-              onRefresh: () async => context.read<ActivityBloc>().add(const ActivityRefreshed()),
+              onRefresh: () async =>
+                  context.read<ActivityBloc>().add(const ActivityRefreshed()),
               child: GridView.builder(
                 padding: const EdgeInsets.all(20),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -73,7 +83,7 @@ class ActivitiesPage extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _createActivity(context),
         icon: const Icon(Icons.add),
-        label: const Text('新增活動'),
+        label: const Text('Add Activity'),
       ),
     );
   }
@@ -84,16 +94,16 @@ class ActivitiesPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('新增活動'),
+          title: const Text('Add Activity'),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(labelText: '活動名稱'),
+            decoration: const InputDecoration(labelText: 'Activity name'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
@@ -103,7 +113,7 @@ class ActivitiesPage extends StatelessWidget {
                   Navigator.of(dialogContext).pop();
                 }
               },
-              child: const Text('建立'),
+              child: const Text('Create'),
             ),
           ],
         );
@@ -113,13 +123,14 @@ class ActivitiesPage extends StatelessWidget {
 
   void _openActivityDetail(BuildContext context, Activity activity) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ActivityDetailPage(activity: activity),
-      ),
+      MaterialPageRoute(builder: (_) => ActivityDetailPage(activity: activity)),
     );
   }
 
-  Future<void> _showActivityActions(BuildContext context, Activity activity) async {
+  Future<void> _showActivityActions(
+    BuildContext context,
+    Activity activity,
+  ) async {
     final result = await showModalBottomSheet<String>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -132,17 +143,17 @@ class ActivitiesPage extends StatelessWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
-                title: const Text('重新命名'),
+                title: const Text('Rename'),
                 onTap: () => Navigator.of(sheetContext).pop('rename'),
               ),
               ListTile(
                 leading: const Icon(Icons.add_a_photo_outlined),
-                title: const Text('新增照片'),
+                title: const Text('Capture photo'),
                 onTap: () => Navigator.of(sheetContext).pop('photo'),
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline),
-                title: const Text('刪除活動'),
+                title: const Text('Delete activity'),
                 textColor: Colors.redAccent,
                 iconColor: Colors.redAccent,
                 onTap: () => Navigator.of(sheetContext).pop('delete'),
@@ -160,9 +171,9 @@ class ActivitiesPage extends StatelessWidget {
         _renameActivity(context, activity);
         break;
       case 'photo':
-        context
-            .read<ActivityBloc>()
-            .add(ActivityPhotoAdded(id: activity.id, source: ImageSource.camera));
+        context.read<ActivityBloc>().add(
+          ActivityPhotoAdded(id: activity.id, source: ImageSource.camera),
+        );
         break;
       case 'delete':
         _deleteActivity(context, activity);
@@ -176,28 +187,28 @@ class ActivitiesPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('重新命名活動'),
+          title: const Text('Rename activity'),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(labelText: '活動名稱'),
+            decoration: const InputDecoration(labelText: 'Activity name'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
                 final value = controller.text.trim();
                 if (value.isNotEmpty) {
-                  context
-                      .read<ActivityBloc>()
-                      .add(ActivityRenamed(id: activity.id, newName: value));
+                  context.read<ActivityBloc>().add(
+                    ActivityRenamed(id: activity.id, newName: value),
+                  );
                 }
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('儲存'),
+              child: const Text('Save'),
             ),
           ],
         );
@@ -210,19 +221,21 @@ class ActivitiesPage extends StatelessWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('刪除活動'),
-          content: Text('確定要刪除「${activity.name}」？這會移除所有相關照片。'),
+          title: const Text('Delete activity'),
+          content: Text(
+            'Delete “${activity.name}”? This removes all associated rounds and photos.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () {
                 context.read<ActivityBloc>().add(ActivityDeleted(activity.id));
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('刪除'),
+              child: const Text('Delete'),
             ),
           ],
         );

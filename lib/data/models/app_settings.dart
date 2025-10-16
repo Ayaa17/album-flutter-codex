@@ -19,11 +19,16 @@ class AppSettings extends Equatable {
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
-      defaultActivityNameFormat: defaultActivityNameFormat ?? this.defaultActivityNameFormat,
+      defaultActivityNameFormat:
+          defaultActivityNameFormat ?? this.defaultActivityNameFormat,
       storagePath: storagePath ?? this.storagePath,
     );
   }
 
   @override
-  List<Object?> get props => [themeMode, defaultActivityNameFormat, storagePath];
+  List<Object?> get props => [
+    themeMode,
+    defaultActivityNameFormat,
+    storagePath,
+  ];
 }

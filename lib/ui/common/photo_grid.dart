@@ -5,11 +5,7 @@ import 'package:flutter/material.dart';
 import '../../data/models/photo_entry.dart';
 
 class PhotoGrid extends StatelessWidget {
-  const PhotoGrid({
-    super.key,
-    required this.photos,
-    required this.onOpen,
-  });
+  const PhotoGrid({super.key, required this.photos, required this.onOpen});
 
   final List<PhotoEntry> photos;
   final void Function(PhotoEntry, int) onOpen;
@@ -34,10 +30,7 @@ class PhotoGrid extends StatelessWidget {
             tag: 'photo_${photo.path}_$index',
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
-              child: Image.file(
-                File(photo.path),
-                fit: BoxFit.cover,
-              ),
+              child: Image.file(File(photo.path), fit: BoxFit.cover),
             ),
           ),
         );

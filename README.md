@@ -1,15 +1,15 @@
-# Event Album
+﻿# Event Album
 
 > This project was generated with the help of OpenAI Codex.
 
-Event Album is a Flutter application for capturing, organising, and browsing photo activities on iOS and Android devices. The app leans on Material 3 design, smooth transitions, and an intuitive bottom navigation layout to keep memories easy to create and revisit.
+Event Album is a Flutter application for capturing, organising, and analysing archery practice sessions on iOS and Android devices. The app leans on Material 3 design, smooth transitions, and an intuitive bottom navigation layout to keep memories easy to create and revisit.
 
 ## Features
 
 - **Bottom Navigation** with Home, Activities, and Settings tabs powered by Material 3 `NavigationBar`.
 - **Home** highlights the most recent activities, quick capture shortcuts, and polished hero animations to detail pages.
 - **Activities** shows every album in a responsive grid, supporting rename, delete, and photo capture directly within each entry.
-- **Activity Detail** offers a rich grid of thumbnails, full-screen photo viewing, and direct camera/gallery import.
+- **Activity Detail** renders an interactive archery target with tap-to-score arrows, per-round totals, optional photos, and long-press removal.
 - **Settings** exposes theme selection (light/dark/system), default naming templates, configurable storage path, and an About section.
 
 ## Architecture
@@ -22,7 +22,7 @@ Event Album is a Flutter application for capturing, organising, and browsing pho
   lib/
     blocs/              # Activity, activity detail, settings, navigation
     data/
-      models/           # Core entities (Activity, PhotoEntry, AppSettings)
+      models/           # Core entities (Activity, ArcheryRound, ArrowHit, AppSettings)
       repositories/     # Activity & settings repositories
       services/         # Storage helpers
     theme/              # Light & dark Material 3 themes

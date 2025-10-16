@@ -1,15 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 
-import '../../data/models/activity.dart';
 import '../../data/repositories/activity_repository.dart';
 import 'activity_event.dart';
 import 'activity_state.dart';
 
 class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
   ActivityBloc({required ActivityRepository repository})
-      : _repository = repository,
-        super(const ActivityState()) {
+    : _repository = repository,
+      super(const ActivityState()) {
     on<ActivityStarted>(_onStarted);
     on<ActivityRefreshed>(_onRefreshed);
     on<ActivityCreated>(_onCreated);
@@ -21,22 +19,39 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
 
   final ActivityRepository _repository;
 
-  Future<void> _onStarted(ActivityStarted event, Emitter<ActivityState> emit) async {
+  Future<void> _onStarted(
+    ActivityStarted event,
+    Emitter<ActivityState> emit,
+  ) async {
     await _loadActivities(emit, loading: true);
   }
 
-  Future<void> _onRefreshed(ActivityRefreshed event, Emitter<ActivityState> emit) async {
-    await _loadActivities(emit, loading: state.status == ActivityStatus.initial);
+  Future<void> _onRefreshed(
+    ActivityRefreshed event,
+    Emitter<ActivityState> emit,
+  ) async {
+    await _loadActivities(
+      emit,
+      loading: state.status == ActivityStatus.initial,
+    );
   }
 
-  Future<void> _onCreated(ActivityCreated event, Emitter<ActivityState> emit) async {
+  Future<void> _onCreated(
+    ActivityCreated event,
+    Emitter<ActivityState> emit,
+  ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
       await _repository.createActivity(event.name);
       await _loadActivities(emit);
-      emit(state.copyWith(message: '已建立活動'));
+      emit(state.copyWith(message: 'Activity created.'));
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '建立活動時發生錯誤。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Failed to create activity.',
+        ),
+      );
     }
   }
 
@@ -48,59 +63,93 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     try {
       await _repository.quickCapture(defaultName: event.defaultName);
       await _loadActivities(emit);
-      emit(state.copyWith(message: '已加入今日活動照片'));
+      emit(state.copyWith(message: 'Quick capture saved.'));
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '快速拍照失敗，請稍後再試。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Quick capture failed. Please try again.',
+        ),
+      );
     }
   }
 
-  Future<void> _onRenamed(ActivityRenamed event, Emitter<ActivityState> emit) async {
+  Future<void> _onRenamed(
+    ActivityRenamed event,
+    Emitter<ActivityState> emit,
+  ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
       await _repository.renameActivity(id: event.id, newName: event.newName);
       await _loadActivities(emit);
-      emit(state.copyWith(message: '活動名稱已更新'));
+      emit(state.copyWith(message: 'Activity name updated.'));
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '重新命名活動失敗。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Failed to rename activity.',
+        ),
+      );
     }
   }
 
-  Future<void> _onDeleted(ActivityDeleted event, Emitter<ActivityState> emit) async {
+  Future<void> _onDeleted(
+    ActivityDeleted event,
+    Emitter<ActivityState> emit,
+  ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
       await _repository.deleteActivity(event.id);
       await _loadActivities(emit);
-      emit(state.copyWith(message: '活動已刪除'));
+      emit(state.copyWith(message: 'Activity deleted.'));
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '刪除活動失敗。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Failed to delete activity.',
+        ),
+      );
     }
   }
 
-  Future<void> _onPhotoAdded(ActivityPhotoAdded event, Emitter<ActivityState> emit) async {
+  Future<void> _onPhotoAdded(
+    ActivityPhotoAdded event,
+    Emitter<ActivityState> emit,
+  ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
       await _repository.addPhotoToActivity(event.id, event.source);
       await _loadActivities(emit);
-      emit(state.copyWith(message: '照片已新增'));
+      emit(state.copyWith(message: 'Photo added.'));
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '新增照片失敗。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Failed to add photo.',
+        ),
+      );
     }
   }
 
-  Future<void> _loadActivities(Emitter<ActivityState> emit, {bool loading = false}) async {
+  Future<void> _loadActivities(
+    Emitter<ActivityState> emit, {
+    bool loading = false,
+  }) async {
     if (loading) {
       emit(state.copyWith(status: ActivityStatus.loading, message: null));
     }
     try {
       final activities = await _repository.loadActivities();
       emit(
-        state.copyWith(
-          status: ActivityStatus.success,
-          activities: activities,
-        ),
+        state.copyWith(status: ActivityStatus.success, activities: activities),
       );
     } catch (_) {
-      emit(state.copyWith(status: ActivityStatus.failure, message: '載入活動失敗，請稍後再試。'));
+      emit(
+        state.copyWith(
+          status: ActivityStatus.failure,
+          message: 'Failed to load activities. Please try again.',
+        ),
+      );
     }
   }
 }

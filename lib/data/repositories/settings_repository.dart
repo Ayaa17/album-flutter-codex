@@ -5,7 +5,8 @@ import '../models/app_settings.dart';
 import '../services/storage_service.dart';
 
 class SettingsRepository {
-  SettingsRepository({required StorageService storageService}) : _storageService = storageService;
+  SettingsRepository({required StorageService storageService})
+    : _storageService = storageService;
 
   final StorageService _storageService;
 
@@ -17,11 +18,13 @@ class SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     final storageDir = await _storageService.ensureRootDirectory();
     final themeIndex = prefs.getInt(_themeKey) ?? ThemeMode.system.index;
-    final themeMode = ThemeMode.values[themeIndex.clamp(0, ThemeMode.values.length - 1)];
+    final themeMode =
+        ThemeMode.values[themeIndex.clamp(0, ThemeMode.values.length - 1)];
 
     return AppSettings(
       themeMode: themeMode,
-      defaultActivityNameFormat: prefs.getString(_defaultNameKey) ?? 'Event {date}',
+      defaultActivityNameFormat:
+          prefs.getString(_defaultNameKey) ?? 'Event {date}',
       storagePath: prefs.getString(_storagePathKey) ?? storageDir.path,
     );
   }

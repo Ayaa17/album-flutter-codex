@@ -35,5 +35,12 @@ class Activity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, createdAt, directoryPath, photoCount, coverPhotoPath];
+  List<Object?> get props => [
+    id,
+    name,
+    createdAt,
+    directoryPath,
+    photoCount,
+    coverPhotoPath,
+  ];
 }

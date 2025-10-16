@@ -12,11 +12,14 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: BlocConsumer<SettingsCubit, SettingsState>(
-          listenWhen: (previous, current) => previous.message != current.message,
+          listenWhen: (previous, current) =>
+              previous.message != current.message,
           listener: (context, state) {
             final message = state.message;
             if (message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(message)));
             }
           },
           builder: (context, state) {
@@ -34,7 +37,9 @@ class SettingsPage extends StatelessWidget {
                             groupValue: settings.themeMode,
                             onChanged: (value) {
                               if (value != null) {
-                                context.read<SettingsCubit>().toggleTheme(value);
+                                context.read<SettingsCubit>().toggleTheme(
+                                  value,
+                                );
                               }
                             },
                             title: Text(_themeModeLabel(mode)),
@@ -53,7 +58,10 @@ class SettingsPage extends StatelessWidget {
                         title: const Text('預設活動名稱'),
                         subtitle: Text(settings.defaultActivityNameFormat),
                         trailing: const Icon(Icons.edit_outlined),
-                        onTap: () => _editDefaultName(context, settings.defaultActivityNameFormat),
+                        onTap: () => _editDefaultName(
+                          context,
+                          settings.defaultActivityNameFormat,
+                        ),
                       ),
                       const Divider(height: 1),
                       ListTile(
@@ -61,7 +69,8 @@ class SettingsPage extends StatelessWidget {
                         title: const Text('儲存路徑'),
                         subtitle: Text(settings.storagePath),
                         trailing: const Icon(Icons.edit_location_alt_outlined),
-                        onTap: () => _changeStoragePath(context, settings.storagePath),
+                        onTap: () =>
+                            _changeStoragePath(context, settings.storagePath),
                       ),
                     ],
                   ),
@@ -133,7 +142,8 @@ class SettingsPage extends StatelessWidget {
               child: const Text('取消'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
               child: const Text('儲存'),
             ),
           ],
@@ -168,7 +178,8 @@ class SettingsPage extends StatelessWidget {
               child: const Text('取消'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
               child: const Text('儲存'),
             ),
           ],
@@ -193,7 +204,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }

@@ -38,9 +38,8 @@ class ActivityCard extends StatelessWidget {
                             activity.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         if (onMorePressed != null)
@@ -54,9 +53,9 @@ class ActivityCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'Created ${_formatDate(activity.createdAt)} · ${activity.photoCount} photos',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.black54,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
                     ),
                   ],
                 ),

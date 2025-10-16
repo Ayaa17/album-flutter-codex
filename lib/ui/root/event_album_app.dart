@@ -48,10 +48,7 @@ class _EventAlbumShell extends StatelessWidget {
           ];
 
           return Scaffold(
-            body: IndexedStack(
-              index: index,
-              children: pages,
-            ),
+            body: IndexedStack(index: index, children: pages),
             bottomNavigationBar: NavigationBar(
               selectedIndex: index,
               onDestinationSelected: (value) {
@@ -64,17 +61,17 @@ class _EventAlbumShell extends StatelessWidget {
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined),
                   selectedIcon: Icon(Icons.home),
-                  label: '首頁',
+                  label: 'Home',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.photo_album_outlined),
                   selectedIcon: Icon(Icons.photo_album),
-                  label: '活動',
+                  label: 'Activities',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.settings_outlined),
                   selectedIcon: Icon(Icons.settings),
-                  label: '設定',
+                  label: 'Settings',
                 ),
               ],
             ),

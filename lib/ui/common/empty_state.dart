@@ -28,7 +28,9 @@ class EmptyState extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           title,
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -38,10 +40,7 @@ class EmptyState extends StatelessWidget {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
           ),
         ),
-        if (action != null) ...[
-          const SizedBox(height: 24),
-          action!,
-        ],
+        if (action != null) ...[const SizedBox(height: 24), action!],
       ],
     );
   }

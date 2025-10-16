@@ -9,8 +9,8 @@ class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit({
     required SettingsRepository repository,
     required AppSettings initialSettings,
-  })  : _repository = repository,
-        super(SettingsState(settings: initialSettings));
+  }) : _repository = repository,
+       super(SettingsState(settings: initialSettings));
 
   final SettingsRepository _repository;
 
@@ -52,7 +52,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         ),
       );
     } catch (_) {
-      emit(state.copyWith(status: SettingsStatus.failure, message: '更新預設名稱失敗。'));
+      emit(
+        state.copyWith(status: SettingsStatus.failure, message: '更新預設名稱失敗。'),
+      );
     }
   }
 
@@ -68,7 +70,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         ),
       );
     } catch (_) {
-      emit(state.copyWith(status: SettingsStatus.failure, message: '更新儲存路徑失敗。'));
+      emit(
+        state.copyWith(status: SettingsStatus.failure, message: '更新儲存路徑失敗。'),
+      );
     }
   }
 }

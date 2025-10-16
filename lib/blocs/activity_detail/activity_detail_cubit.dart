@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/activity.dart';
@@ -43,7 +43,12 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
   }
 
   Future<void> addRound() async {
-    emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    final hasExistingRounds = state.rounds.isNotEmpty;
+    if (hasExistingRounds) {
+      emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    } else {
+      emit(state.copyWith(message: null));
+    }
     try {
       final updated = await _repository.addRound(
         state.activity.id,
@@ -53,7 +58,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
         state.copyWith(
           status: ActivityDetailStatus.success,
           rounds: updated,
-          selectedRoundId: updated.isEmpty ? null : updated.first.id,
+          selectedRoundId: updated.isEmpty ? null : updated.last.id,
           message: 'Round added.',
         ),
       );

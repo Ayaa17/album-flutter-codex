@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -47,10 +47,6 @@ class _ActivityDetailView extends StatelessWidget {
       },
       builder: (context, state) {
         final selectedRound = state.selectedRound;
-        final isInitialLoading =
-            state.status == ActivityDetailStatus.loading &&
-            state.rounds.isEmpty;
-
         return Scaffold(
           appBar: AppBar(title: Text(state.activity.name)),
           floatingActionButton: FloatingActionButton.extended(
@@ -58,95 +54,148 @@ class _ActivityDetailView extends StatelessWidget {
             icon: const Icon(Icons.my_location_outlined),
             label: const Text('Add Round'),
           ),
-          body: isInitialLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SafeArea(
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
                   child: Column(
                     children: [
                       Expanded(
                         flex: 5,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              if (selectedRound != null)
-                                _RoundHeader(
-                                  round: selectedRound,
-                                  roundIndex:
-                                      state.rounds.indexWhere(
-                                        (round) => round.id == selectedRound.id,
-                                      ) +
-                                      1,
-                                )
-                              else
-                                const EmptyState(
-                                  icon: Icons.my_location_outlined,
-                                  title: 'No rounds yet',
-                                  message:
-                                      'Add a round to start tracking your arrows.',
-                                ),
-                              const SizedBox(height: 12),
-                              if (selectedRound != null)
-                                Expanded(
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final available = math.min(
-                                        constraints.maxWidth,
-                                        constraints.maxHeight,
-                                      );
-                                      final diameter = math.min(
-                                        ArcheryRepository.targetRadius * 2,
-                                        available,
-                                      );
-                                      final targetSize = Size.square(diameter);
-                                      final cubit = context
-                                          .read<ActivityDetailCubit>();
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              const headerSpacing = 12.0;
+                              const minHeaderHeight = 132.0;
+                              const maxHeaderHeight = 200.0;
 
-                                      if (diameter <= 0) {
-                                        return const SizedBox();
-                                      }
+                              final headerContent = selectedRound != null
+                                  ? _RoundHeader(
+                                      round: selectedRound,
+                                      roundIndex:
+                                          state.rounds.indexWhere(
+                                            (round) =>
+                                                round.id == selectedRound.id,
+                                          ) +
+                                          1,
+                                    )
+                                  : const _NoRoundHeader();
 
-                                      return Center(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTapUp: (details) => cubit.addArrow(
-                                            details.localPosition,
-                                            targetSize,
-                                          ),
-                                          onLongPressStart: (details) =>
-                                              _handleLongPress(
-                                                context,
-                                                details.localPosition,
-                                                targetSize,
-                                                selectedRound,
-                                              ),
-                                          child: SizedBox(
-                                            width: targetSize.width,
-                                            height: targetSize.height,
-                                            child: CustomPaint(
-                                              painter: ArcheryTargetPainter(
-                                                arrows: selectedRound.arrows,
-                                                drawRadius:
-                                                    targetSize.width / 2,
-                                                baseRadius: ArcheryRepository
-                                                    .targetRadius,
+                              final maxHeaderExtent = math.max(
+                                0.0,
+                                constraints.maxHeight - headerSpacing,
+                              );
+                              var headerHeight = math.min(
+                                maxHeaderExtent,
+                                maxHeaderHeight,
+                              );
+                              if (headerHeight < minHeaderHeight) {
+                                headerHeight = math.min(
+                                  maxHeaderExtent,
+                                  minHeaderHeight,
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    height: headerHeight,
+                                    child: SingleChildScrollView(
+                                      physics:
+                                          const ClampingScrollPhysics(),
+                                      child: Align(
+                                        alignment: Alignment.topLeft,
+                                        child: headerContent,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: headerSpacing),
+                                  Expanded(
+                                    child: LayoutBuilder(
+                                      builder: (context, targetConstraints) {
+                                        final available = math.min(
+                                          targetConstraints.maxWidth,
+                                          targetConstraints.maxHeight,
+                                        );
+                                        final diameter = math.min(
+                                          ArcheryRepository.targetRadius * 2,
+                                          available,
+                                        );
+                                        final targetSize = Size.square(
+                                          diameter,
+                                        );
+                                        final cubit = context
+                                            .read<ActivityDetailCubit>();
+                                        final arrows =
+                                            selectedRound?.arrows ??
+                                            const <ArrowHit>[];
+
+                                        if (diameter <= 0) {
+                                          return const SizedBox();
+                                        }
+
+                                        return Center(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTapUp: (details) =>
+                                                cubit.addArrow(
+                                              details.localPosition,
+                                              targetSize,
+                                            ),
+                                            onLongPressStart: (details) {
+                                              if (selectedRound != null) {
+                                                _handleLongPress(
+                                                  context,
+                                                  details.localPosition,
+                                                  targetSize,
+                                                  selectedRound,
+                                                );
+                                              }
+                                            },
+                                            child: SizedBox(
+                                              width: targetSize.width,
+                                              height: targetSize.height,
+                                              child: CustomPaint(
+                                                painter: ArcheryTargetPainter(
+                                                  arrows: arrows,
+                                                  drawRadius:
+                                                      targetSize.width / 2,
+                                                  baseRadius:
+                                                      ArcheryRepository
+                                                          .targetRadius,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      );
-                                    },
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                            ],
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ),
                       const Divider(height: 1),
-                      Expanded(flex: 5, child: const _RoundList()),
+                      const Expanded(flex: 5, child: _RoundList()),
                     ],
                   ),
                 ),
+                if (state.status == ActivityDetailStatus.loading &&
+                    state.rounds.isNotEmpty)
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: Color(0x14000000),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -204,6 +253,40 @@ class _ActivityDetailView extends StatelessWidget {
   }
 }
 
+class _NoRoundHeader extends StatelessWidget {
+  const _NoRoundHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'No round selected',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: const [
+            _SummaryChip(label: 'Score', value: '0'),
+            _SummaryChip(label: 'Arrows', value: '0 / 6'),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tap the target after adding a round to log your arrows.',
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
 class _RoundHeader extends StatelessWidget {
   const _RoundHeader({required this.round, required this.roundIndex});
 
@@ -212,14 +295,24 @@ class _RoundHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Round $roundIndex · ${round.totalScore} pts',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            _SummaryChip(label: 'Score', value: '${round.totalScore}'),
+            _SummaryChip(label: 'Arrows', value: '${round.arrows.length} / 6'),
+          ],
         ),
         const SizedBox(height: 8),
         if (round.arrows.isNotEmpty)
@@ -233,11 +326,49 @@ class _RoundHeader extends StatelessWidget {
         else
           Text(
             'Tap anywhere on the target to log an arrow (max 6).',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
           ),
       ],
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

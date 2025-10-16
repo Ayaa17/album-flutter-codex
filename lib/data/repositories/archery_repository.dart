@@ -54,7 +54,8 @@ class ArcheryRepository {
     String activityId,
     List<ArcheryRound> rounds,
   ) async {
-    final updated = <ArcheryRound>[ArcheryRound.create(), ...rounds];
+    final newRound = ArcheryRound.create();
+    final updated = <ArcheryRound>[...rounds, newRound];
     await saveRounds(activityId, updated);
     return updated;
   }

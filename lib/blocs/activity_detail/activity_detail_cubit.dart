@@ -72,6 +72,48 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
     }
   }
 
+  Future<void> addRoundWithPhoto() async {
+    if (state.rounds.isNotEmpty) {
+      emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    } else {
+      emit(state.copyWith(message: null));
+    }
+    try {
+      final updated = await _repository.addRoundWithPhoto(
+        state.activity.id,
+        state.rounds,
+      );
+      if (identical(updated, state.rounds) ||
+          updated.length == state.rounds.length) {
+        emit(
+          state.copyWith(
+            status: ActivityDetailStatus.success,
+            rounds: updated,
+            selectedRoundId: state.selectedRoundId,
+            message: 'Photo capture cancelled.',
+          ),
+        );
+        return;
+      }
+      final newRound = updated.last;
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.success,
+          rounds: updated,
+          selectedRoundId: newRound.id,
+          message: 'Round added with photo.',
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.failure,
+          message: 'Unable to add round with photo.',
+        ),
+      );
+    }
+  }
+
   Future<void> addArrow(Offset localPosition, Size targetSize) async {
     final round = state.selectedRound;
     if (round == null) {

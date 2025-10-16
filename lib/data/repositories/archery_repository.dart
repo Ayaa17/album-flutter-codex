@@ -60,11 +60,51 @@ class ArcheryRepository {
     return updated;
   }
 
+  Future<List<ArcheryRound>> addRoundWithPhoto(
+    String activityId,
+    List<ArcheryRound> rounds,
+  ) async {
+    final newRound = ArcheryRound.create();
+    final picked = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 2048,
+      imageQuality: 88,
+    );
+    if (picked == null) {
+      return rounds;
+    }
+
+    final directory = await _storageService.ensureActivityDirectory(activityId);
+    final extension = p.extension(picked.path).isEmpty
+        ? '.jpg'
+        : p.extension(picked.path);
+    final fileName = 'round_${newRound.id}$extension';
+    final targetPath = p.join(directory.path, fileName);
+
+    if (Platform.isIOS || Platform.isAndroid) {
+      await picked.saveTo(targetPath);
+    } else {
+      await File(picked.path).copy(targetPath);
+    }
+
+    final roundWithPhoto = newRound.copyWith(photoPath: targetPath);
+    final updated = <ArcheryRound>[...rounds, roundWithPhoto];
+    await saveRounds(activityId, updated);
+    return updated;
+  }
+
   Future<List<ArcheryRound>> attachPhoto(
     String activityId,
     List<ArcheryRound> rounds,
     String roundId,
   ) async {
+    String? previousPhotoPath;
+    for (final round in rounds) {
+      if (round.id == roundId) {
+        previousPhotoPath = round.photoPath;
+        break;
+      }
+    }
     final picked = await _picker.pickImage(
       source: ImageSource.camera,
       maxWidth: 2048,
@@ -76,7 +116,8 @@ class ArcheryRepository {
     final extension = p.extension(picked.path).isEmpty
         ? '.jpg'
         : p.extension(picked.path);
-    final fileName = 'round_$roundId$extension';
+    final uniqueSuffix = _uuid.v4();
+    final fileName = 'round_${roundId}_$uniqueSuffix$extension';
     final targetPath = p.join(directory.path, fileName);
 
     if (Platform.isIOS || Platform.isAndroid) {
@@ -93,6 +134,16 @@ class ArcheryRepository {
         )
         .toList();
     await saveRounds(activityId, updated);
+
+    if (previousPhotoPath != null && previousPhotoPath != targetPath) {
+      final previousFile = File(previousPhotoPath);
+      if (await previousFile.exists()) {
+        try {
+          await previousFile.delete();
+        } catch (_) {}
+      }
+    }
+
     return updated;
   }
 

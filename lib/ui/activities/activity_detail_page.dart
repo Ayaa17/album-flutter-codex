@@ -57,10 +57,23 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         final selectedRound = state.selectedRound;
         return Scaffold(
           appBar: AppBar(title: Text(state.activity.name)),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => context.read<ActivityDetailCubit>().addRound(),
-            icon: const Icon(Icons.my_location_outlined),
-            label: const Text('Add Round'),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.extended(
+                onPressed: () =>
+                    context.read<ActivityDetailCubit>().addRoundWithPhoto(),
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: const Text('Add Picture'),
+              ),
+              const SizedBox(height: 12),
+              FloatingActionButton.extended(
+                onPressed: () => context.read<ActivityDetailCubit>().addRound(),
+                icon: const Icon(Icons.my_location_outlined),
+                label: const Text('Add Round'),
+              ),
+            ],
           ),
           body: SafeArea(
             child: Stack(
@@ -502,6 +515,66 @@ class _ArrowScorePill extends StatelessWidget {
 class _RoundList extends StatelessWidget {
   const _RoundList();
 
+  Future<void> _handlePhotoAction(
+    BuildContext context,
+    ActivityDetailCubit cubit,
+    ArcheryRound round,
+  ) async {
+    final photoPath = round.photoPath;
+    if (photoPath == null) {
+      await cubit.attachPhoto(round.id);
+      return;
+    }
+
+    final file = File(photoPath);
+    if (!file.existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Photo not found. Please capture a new one.'),
+        ),
+      );
+      await cubit.attachPhoto(round.id);
+      return;
+    }
+
+    final shouldReplace =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Round photo'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 360,
+                  maxHeight: 480,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: InteractiveViewer(
+                    child: Image.file(file, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Close'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Replace photo'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (shouldReplace) {
+      await cubit.attachPhoto(round.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ActivityDetailCubit, ActivityDetailState>(
@@ -556,8 +629,11 @@ class _RoundList extends StatelessWidget {
                     spacing: 8,
                     children: [
                       IconButton(
-                        tooltip: 'Attach photo',
-                        onPressed: () => cubit.attachPhoto(round.id),
+                        tooltip: round.photoPath == null
+                            ? 'Attach photo'
+                            : 'View photo',
+                        onPressed: () =>
+                            _handlePhotoAction(context, cubit, round),
                         icon: const Icon(Icons.camera_alt_outlined),
                       ),
                       IconButton(

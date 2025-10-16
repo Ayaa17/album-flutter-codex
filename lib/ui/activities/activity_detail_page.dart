@@ -30,8 +30,16 @@ class ActivityDetailPage extends StatelessWidget {
   }
 }
 
-class _ActivityDetailView extends StatelessWidget {
+class _ActivityDetailView extends StatefulWidget {
   const _ActivityDetailView();
+
+  @override
+  State<_ActivityDetailView> createState() => _ActivityDetailViewState();
+}
+
+class _ActivityDetailViewState extends State<_ActivityDetailView> {
+  Offset? _crosshairPosition;
+  Offset? _pendingArrowPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +71,7 @@ class _ActivityDetailView extends StatelessWidget {
                       Expanded(
                         flex: 6,
                         child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               const headerSpacing = 6.0;
@@ -103,8 +110,7 @@ class _ActivityDetailView extends StatelessWidget {
                                   SizedBox(
                                     height: headerHeight,
                                     child: SingleChildScrollView(
-                                      physics:
-                                          const ClampingScrollPhysics(),
+                                      physics: const ClampingScrollPhysics(),
                                       child: Align(
                                         alignment: Alignment.topLeft,
                                         child: headerContent,
@@ -136,12 +142,34 @@ class _ActivityDetailView extends StatelessWidget {
                                         return Center(
                                           child: GestureDetector(
                                             behavior: HitTestBehavior.opaque,
-                                            onTapUp: (details) =>
-                                                cubit.addArrow(
-                                              details.localPosition,
-                                              targetSize,
-                                            ),
+                                            onTapDown: (details) =>
+                                                _updateCrosshair(
+                                                  details.localPosition,
+                                                  targetSize,
+                                                ),
+                                            onTapUp: (details) {
+                                              _updateCrosshair(
+                                                details.localPosition,
+                                                targetSize,
+                                              );
+                                              _commitArrow(cubit, targetSize);
+                                            },
+                                            onTapCancel: _hideCrosshair,
+                                            onPanStart: (details) =>
+                                                _updateCrosshair(
+                                                  details.localPosition,
+                                                  targetSize,
+                                                ),
+                                            onPanUpdate: (details) =>
+                                                _updateCrosshair(
+                                                  details.localPosition,
+                                                  targetSize,
+                                                ),
+                                            onPanEnd: (_) =>
+                                                _commitArrow(cubit, targetSize),
+                                            onPanCancel: _hideCrosshair,
                                             onLongPressStart: (details) {
+                                              _hideCrosshair();
                                               if (selectedRound != null) {
                                                 _handleLongPress(
                                                   context,
@@ -154,15 +182,30 @@ class _ActivityDetailView extends StatelessWidget {
                                             child: SizedBox(
                                               width: targetSize.width,
                                               height: targetSize.height,
-                                              child: CustomPaint(
-                                                painter: ArcheryTargetPainter(
-                                                  arrows: arrows,
-                                                  drawRadius:
-                                                      targetSize.width / 2,
-                                                  baseRadius:
-                                                      ArcheryRepository
-                                                          .targetRadius,
-                                                ),
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  CustomPaint(
+                                                    painter:
+                                                        ArcheryTargetPainter(
+                                                          arrows: arrows,
+                                                          drawRadius:
+                                                              targetSize.width /
+                                                              2,
+                                                          baseRadius:
+                                                              ArcheryRepository
+                                                                  .targetRadius,
+                                                        ),
+                                                  ),
+                                                  if (_crosshairPosition !=
+                                                      null)
+                                                    CustomPaint(
+                                                      painter: _CrosshairPainter(
+                                                        position:
+                                                            _crosshairPosition!,
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                             ),
                                           ),
@@ -197,6 +240,40 @@ class _ActivityDetailView extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _updateCrosshair(Offset rawPosition, Size targetSize) {
+    final position = _clampToTarget(rawPosition, targetSize);
+    setState(() {
+      _crosshairPosition = position;
+      _pendingArrowPosition = position;
+    });
+  }
+
+  void _commitArrow(ActivityDetailCubit cubit, Size targetSize) {
+    final position = _pendingArrowPosition;
+    if (position == null) {
+      _hideCrosshair();
+      return;
+    }
+    _hideCrosshair();
+    cubit.addArrow(position, targetSize);
+  }
+
+  void _hideCrosshair() {
+    if (_crosshairPosition == null && _pendingArrowPosition == null) {
+      return;
+    }
+    setState(() {
+      _crosshairPosition = null;
+      _pendingArrowPosition = null;
+    });
+  }
+
+  Offset _clampToTarget(Offset rawPosition, Size targetSize) {
+    final dx = rawPosition.dx.clamp(0.0, targetSize.width) as double;
+    final dy = rawPosition.dy.clamp(0.0, targetSize.height) as double;
+    return Offset(dx, dy);
   }
 
   void _handleLongPress(
@@ -347,10 +424,12 @@ class _ArrowScorePill extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final base = colorScheme.primary;
     final hslBase = HSLColor.fromColor(base);
-    final lighter =
-        hslBase.withLightness(math.min(hslBase.lightness + 0.18, 1.0)).toColor();
-    final darker =
-        hslBase.withLightness(math.max(hslBase.lightness - 0.10, 0.0)).toColor();
+    final lighter = hslBase
+        .withLightness(math.min(hslBase.lightness + 0.18, 1.0))
+        .toColor();
+    final darker = hslBase
+        .withLightness(math.max(hslBase.lightness - 0.10, 0.0))
+        .toColor();
 
     return Container(
       decoration: BoxDecoration(
@@ -392,8 +471,10 @@ class _ArrowScorePill extends StatelessWidget {
             ),
             Center(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Text(
                   '$score',
                   textAlign: TextAlign.center,
@@ -577,6 +658,45 @@ class ArcheryTargetPainter extends CustomPainter {
     return oldDelegate.arrows != arrows ||
         oldDelegate.drawRadius != drawRadius ||
         oldDelegate.baseRadius != baseRadius;
+  }
+}
+
+class _CrosshairPainter extends CustomPainter {
+  const _CrosshairPainter({required this.position});
+
+  final Offset position;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final guidePaint = Paint()
+      ..color = Colors.orangeAccent.withOpacity(0.8)
+      ..strokeWidth = 1.5;
+    canvas.drawLine(
+      Offset(position.dx, 0),
+      Offset(position.dx, size.height),
+      guidePaint,
+    );
+    canvas.drawLine(
+      Offset(0, position.dy),
+      Offset(size.width, position.dy),
+      guidePaint,
+    );
+
+    final circlePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = Colors.orangeAccent;
+    canvas.drawCircle(position, 12, circlePaint);
+
+    final dotPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.orangeAccent;
+    canvas.drawCircle(position, 3, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CrosshairPainter oldDelegate) {
+    return oldDelegate.position != position;
   }
 }
 

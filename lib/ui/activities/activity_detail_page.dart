@@ -69,7 +69,7 @@ class _ActivityDetailView extends StatelessWidget {
                             builder: (context, constraints) {
                               const headerSpacing = 6.0;
                               const minHeaderHeight = 96.0;
-                              const maxHeaderHeight = 140.0;
+                              const maxHeaderHeight = 96.0;
 
                               final headerContent = selectedRound != null
                                   ? _RoundHeader(

@@ -185,6 +185,40 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
     }
   }
 
+  Future<void> updateArrowScore({
+    required String roundId,
+    required String arrowId,
+    required int newScore,
+  }) async {
+    emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    try {
+      final updated = await _repository.updateArrowScore(
+        activityId: state.activity.id,
+        rounds: state.rounds,
+        roundId: roundId,
+        arrowId: arrowId,
+        newScore: newScore,
+      );
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.success,
+          rounds: updated,
+          selectedRoundId: updated.isEmpty
+              ? null
+              : (state.selectedRoundId ?? updated.first.id),
+          message: 'Arrow score updated.',
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.failure,
+          message: 'Unable to update arrow score.',
+        ),
+      );
+    }
+  }
+
   Future<void> deleteRound(String roundId) async {
     emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
     try {

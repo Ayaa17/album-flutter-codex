@@ -40,6 +40,7 @@ class _ActivityDetailView extends StatefulWidget {
 class _ActivityDetailViewState extends State<_ActivityDetailView> {
   Offset? _crosshairPosition;
   Offset? _pendingArrowPosition;
+  String? _highlightedArrowId;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +56,11 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
       },
       builder: (context, state) {
         final selectedRound = state.selectedRound;
+        final highlightId = selectedRound == null ||
+                !(selectedRound.arrows
+                    .any((arrow) => arrow.id == _highlightedArrowId))
+            ? null
+            : _highlightedArrowId;
         return Scaffold(
           appBar: AppBar(title: Text(state.activity.name)),
           floatingActionButton: Column(
@@ -100,6 +106,14 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                                 round.id == selectedRound.id,
                                           ) +
                                           1,
+                                      highlightedArrowId: highlightId,
+                                      onArrowTap: _handleArrowTap,
+                                      onArrowLongPress: (arrow) =>
+                                          _handleArrowLongPress(
+                                            context,
+                                            selectedRound,
+                                            arrow,
+                                          ),
                                     )
                                   : const _NoRoundHeader();
 
@@ -181,17 +195,6 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                             onPanEnd: (_) =>
                                                 _commitArrow(cubit, targetSize),
                                             onPanCancel: _hideCrosshair,
-                                            onLongPressStart: (details) {
-                                              _hideCrosshair();
-                                              if (selectedRound != null) {
-                                                _handleLongPress(
-                                                  context,
-                                                  details.localPosition,
-                                                  targetSize,
-                                                  selectedRound,
-                                                );
-                                              }
-                                            },
                                             child: SizedBox(
                                               width: targetSize.width,
                                               height: targetSize.height,
@@ -208,6 +211,8 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                                           baseRadius:
                                                               ArcheryRepository
                                                                   .targetRadius,
+                                                          highlightedArrowId:
+                                                              highlightId,
                                                         ),
                                                   ),
                                                   if (_crosshairPosition !=
@@ -289,55 +294,49 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     return Offset(dx, dy);
   }
 
-  void _handleLongPress(
+  void _handleArrowTap(ArrowHit arrow) {
+    setState(() {
+      _highlightedArrowId = arrow.id;
+    });
+  }
+
+  Future<void> _handleArrowLongPress(
     BuildContext context,
-    Offset localPosition,
-    Size targetSize,
     ArcheryRound round,
-  ) {
-    final center = Offset(targetSize.width / 2, targetSize.height / 2);
-    const threshold = 18.0;
-    final renderRadius = targetSize.width / 2;
-    if (renderRadius <= 0) return;
-    final scale = renderRadius / ArcheryRepository.targetRadius;
-    ArrowHit? target;
-
-    for (final arrow in round.arrows) {
-      final absolute = center + arrow.position * scale;
-      if ((absolute - localPosition).distance <= threshold) {
-        target = arrow;
-        break;
-      }
-    }
-
-    if (target == null) return;
-
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Remove this arrow'),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  context.read<ActivityDetailCubit>().removeArrow(
-                    round.id,
-                    target!.id,
-                  );
-                },
+    ArrowHit arrow,
+  ) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Delete arrow?'),
+              content: Text(
+                'Remove the arrow scored ${arrow.score} pts?',
               ),
-            ],
-          ),
-        );
-      },
-    );
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+    if (!confirmed) return;
+    await context
+        .read<ActivityDetailCubit>()
+        .removeArrow(round.id, arrow.id);
+    if (!mounted) return;
+    if (_highlightedArrowId == arrow.id) {
+      setState(() {
+        _highlightedArrowId = null;
+      });
+    }
   }
 }
 
@@ -367,10 +366,19 @@ class _NoRoundHeader extends StatelessWidget {
 }
 
 class _RoundHeader extends StatelessWidget {
-  const _RoundHeader({required this.round, required this.roundIndex});
+  const _RoundHeader({
+    required this.round,
+    required this.roundIndex,
+    required this.highlightedArrowId,
+    required this.onArrowTap,
+    required this.onArrowLongPress,
+  });
 
   final ArcheryRound round;
   final int roundIndex;
+  final String? highlightedArrowId;
+  final void Function(ArrowHit arrow) onArrowTap;
+  final void Function(ArrowHit arrow) onArrowLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -386,7 +394,7 @@ class _RoundHeader extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         if (sortedArrows.isNotEmpty)
           LayoutBuilder(
             builder: (context, constraints) {
@@ -407,7 +415,13 @@ class _RoundHeader extends StatelessWidget {
                   for (var i = 0; i < count; i++) ...[
                     SizedBox(
                       width: pillWidth,
-                      child: _ArrowScorePill(score: sortedArrows[i].score),
+                      child: _ArrowScorePill(
+                        score: sortedArrows[i].score,
+                        isHighlighted:
+                            highlightedArrowId == sortedArrows[i].id,
+                        onTap: () => onArrowTap(sortedArrows[i]),
+                        onLongPress: () => onArrowLongPress(sortedArrows[i]),
+                      ),
                     ),
                     if (i != count - 1) const SizedBox(width: spacing),
                   ],
@@ -426,9 +440,17 @@ class _RoundHeader extends StatelessWidget {
 }
 
 class _ArrowScorePill extends StatelessWidget {
-  const _ArrowScorePill({required this.score});
+  const _ArrowScorePill({
+    required this.score,
+    this.isHighlighted = false,
+    this.onTap,
+    this.onLongPress,
+  });
 
   final int score;
+  final bool isHighlighted;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   static const double fixedWidth = 55.0;
 
   @override
@@ -447,14 +469,16 @@ class _ArrowScorePill extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [lighter, darker],
+          colors: isHighlighted ? [darker, lighter] : [lighter, darker],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: colorScheme.onPrimary.withOpacity(0.18),
-          width: 1.2,
+          color: isHighlighted
+              ? Colors.orangeAccent
+              : colorScheme.onPrimary.withOpacity(0.18),
+          width: isHighlighted ? 2.0 : 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -464,48 +488,35 @@ class _ArrowScorePill extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      colorScheme.onPrimary.withOpacity(0.16),
-                      Colors.transparent,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            child: Center(
+              child: Text(
+                '$score',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.onPrimary,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
               ),
             ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Text(
-                  '$score',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.onPrimary,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -658,11 +669,13 @@ class ArcheryTargetPainter extends CustomPainter {
     required this.arrows,
     required this.drawRadius,
     required this.baseRadius,
+    this.highlightedArrowId,
   });
 
   final List<ArrowHit> arrows;
   final double drawRadius;
   final double baseRadius;
+  final String? highlightedArrowId;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -706,11 +719,19 @@ class ArcheryTargetPainter extends CustomPainter {
     );
 
     for (final arrow in arrows) {
+      final isHighlighted = arrow.id == highlightedArrowId;
       final arrowPaint = Paint()
         ..style = PaintingStyle.fill
-        ..color = Colors.deepPurple;
+        ..color = isHighlighted ? Colors.orange : Colors.deepPurple;
       final absolute = center + arrow.position * scale;
-      canvas.drawCircle(absolute, 6, arrowPaint);
+      canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
+      if (isHighlighted) {
+        final ring = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..color = Colors.orangeAccent.withOpacity(0.9);
+        canvas.drawCircle(absolute, 14, ring);
+      }
       final textPainter = TextPainter(
         text: TextSpan(
           text: '${arrow.score}',
@@ -733,7 +754,8 @@ class ArcheryTargetPainter extends CustomPainter {
   bool shouldRepaint(covariant ArcheryTargetPainter oldDelegate) {
     return oldDelegate.arrows != arrows ||
         oldDelegate.drawRadius != drawRadius ||
-        oldDelegate.baseRadius != baseRadius;
+        oldDelegate.baseRadius != baseRadius ||
+        oldDelegate.highlightedArrowId != highlightedArrowId;
   }
 }
 

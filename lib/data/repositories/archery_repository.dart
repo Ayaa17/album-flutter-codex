@@ -207,6 +207,26 @@ class ArcheryRepository {
     return updated;
   }
 
+  Future<List<ArcheryRound>> updateArrowScore({
+    required String activityId,
+    required List<ArcheryRound> rounds,
+    required String roundId,
+    required String arrowId,
+    required int newScore,
+  }) async {
+    final clampedScore = newScore.clamp(0, 10).toInt();
+    final updated = rounds.map((round) {
+      if (round.id != roundId) return round;
+      final updatedArrows = round.arrows.map((arrow) {
+        if (arrow.id != arrowId) return arrow;
+        return arrow.createCopy(score: clampedScore);
+      }).toList();
+      return round.copyWith(arrows: updatedArrows);
+    }).toList();
+    await saveRounds(activityId, updated);
+    return updated;
+  }
+
   int _scoreFromRatio(double ratio) {
     if (ratio <= 0.10) return 10;
     if (ratio <= 0.20) return 9;

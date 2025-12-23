@@ -42,6 +42,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
   Offset? _crosshairPosition;
   Offset? _pendingArrowPosition;
   String? _highlightedArrowId;
+  bool _isTargetExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +58,11 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
       },
       builder: (context, state) {
         final selectedRound = state.selectedRound;
-        final highlightId = selectedRound == null ||
-                !(selectedRound.arrows
-                    .any((arrow) => arrow.id == _highlightedArrowId))
+        final highlightId =
+            selectedRound == null ||
+                !(selectedRound.arrows.any(
+                  (arrow) => arrow.id == _highlightedArrowId,
+                ))
             ? null
             : _highlightedArrowId;
         return Scaffold(
@@ -68,18 +71,18 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              FloatingActionButton.extended(
-                onPressed: () =>
-                    context.read<ActivityDetailCubit>().addRoundWithPhoto(),
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Add Picture'),
-              ),
-              const SizedBox(height: 12),
-              FloatingActionButton.extended(
-                onPressed: () => context.read<ActivityDetailCubit>().addRound(),
-                icon: const Icon(Icons.my_location_outlined),
-                label: const Text('Add Round'),
-              ),
+              // FloatingActionButton.extended(
+              //   onPressed: () =>
+              //       context.read<ActivityDetailCubit>().addRoundWithPhoto(),
+              //   icon: const Icon(Icons.camera_alt_outlined),
+              //   label: const Text('Add Picture'),
+              // ),
+              // const SizedBox(height: 12),
+              // FloatingActionButton.extended(
+              //   onPressed: () => context.read<ActivityDetailCubit>().addRound(),
+              //   icon: const Icon(Icons.my_location_outlined),
+              //   label: const Text('Add Round'),
+              // ),
             ],
           ),
           body: SafeArea(
@@ -153,80 +156,43 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                           targetConstraints.maxWidth,
                                           targetConstraints.maxHeight,
                                         );
-                                        final diameter = available;
-                                        final targetSize = Size.square(
-                                          diameter,
-                                        );
-                                        final cubit = context
-                                            .read<ActivityDetailCubit>();
-                                        final arrows =
-                                            selectedRound?.arrows ??
-                                            const <ArrowHit>[];
-
-                                        if (diameter <= 0) {
+                                        if (available <= 0) {
                                           return const SizedBox();
                                         }
-
+                                        final targetSize = Size.square(
+                                          available,
+                                        );
                                         return Center(
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTapDown: (details) =>
-                                                _updateCrosshair(
-                                                  details.localPosition,
-                                                  targetSize,
-                                                ),
-                                            onTapUp: (details) {
-                                              _updateCrosshair(
-                                                details.localPosition,
-                                                targetSize,
-                                              );
-                                              _commitArrow(cubit, targetSize);
-                                            },
-                                            onTapCancel: _hideCrosshair,
-                                            onPanStart: (details) =>
-                                                _updateCrosshair(
-                                                  details.localPosition,
-                                                  targetSize,
-                                                ),
-                                            onPanUpdate: (details) =>
-                                                _updateCrosshair(
-                                                  details.localPosition,
-                                                  targetSize,
-                                                ),
-                                            onPanEnd: (_) =>
-                                                _commitArrow(cubit, targetSize),
-                                            onPanCancel: _hideCrosshair,
-                                            child: SizedBox(
-                                              width: targetSize.width,
-                                              height: targetSize.height,
-                                              child: Stack(
-                                                fit: StackFit.expand,
-                                                children: [
-                                                  CustomPaint(
-                                                    painter:
-                                                        ArcheryTargetPainter(
-                                                          arrows: arrows,
-                                                          highlightedArrowId:
-                                                              highlightId,
-                                                          targetFaceType: state
-                                                              .activity
-                                                              .targetFaceType,
-                                                        ),
-                                                  ),
-                                                  if (_crosshairPosition !=
-                                                      null)
-                                                    CustomPaint(
-                                                      painter: _CrosshairPainter(
-                                                        position:
-                                                            _crosshairPosition!,
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
+                                          child: _buildTargetCanvas(
+                                            targetSize,
+                                            state,
+                                            highlightId,
                                           ),
                                         );
                                       },
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: () => setState(
+                                        () => _isTargetExpanded = true,
+                                      ),
+                                      icon: const Icon(Icons.open_in_full),
+                                      label: const Text('Expand target'),
+                                    ),
+                                  ),
+
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton.icon(
+                                      onPressed: () => context
+                                          .read<ActivityDetailCubit>()
+                                          .addRound(),
+                                      icon: const Icon(
+                                        Icons.my_location_outlined,
+                                      ),
+                                      label: const Text('Add Round'),
                                     ),
                                   ),
                                 ],
@@ -247,6 +213,56 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                       child: ColoredBox(
                         color: Color(0x14000000),
                         child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                  ),
+                if (_isTargetExpanded)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      child: SafeArea(
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final size = math.min(
+                                    constraints.maxWidth - 24,
+                                    constraints.maxHeight - 24,
+                                  );
+                                  final targetSize = Size.square(
+                                    math.max(size, 0),
+                                  );
+                                  return _buildTargetCanvas(
+                                    targetSize,
+                                    state,
+                                    highlightId,
+                                  );
+                                },
+                              ),
+                            ),
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: FloatingActionButton.small(
+                                heroTag: 'close_target',
+                                onPressed: () =>
+                                    setState(() => _isTargetExpanded = false),
+                                child: const Icon(Icons.close_fullscreen),
+                              ),
+                            ),
+
+                            Positioned(
+                              right: 16,
+                              bottom: 16,
+                              child: FloatingActionButton.extended(
+                onPressed: () => context.read<ActivityDetailCubit>().addRound(),
+                icon: const Icon(Icons.my_location_outlined),
+                label: const Text('Add Round'),
+              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -303,14 +319,13 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     ArcheryRound round,
     ArrowHit arrow,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
               title: const Text('Delete arrow?'),
-              content: Text(
-                'Remove the arrow scored ${arrow.score} pts?',
-              ),
+              content: Text('Remove the arrow scored ${arrow.score} pts?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -326,15 +341,59 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         ) ??
         false;
     if (!confirmed) return;
-    await context
-        .read<ActivityDetailCubit>()
-        .removeArrow(round.id, arrow.id);
+    await context.read<ActivityDetailCubit>().removeArrow(round.id, arrow.id);
     if (!mounted) return;
     if (_highlightedArrowId == arrow.id) {
       setState(() {
         _highlightedArrowId = null;
       });
     }
+  }
+
+  Widget _buildTargetCanvas(
+    Size targetSize,
+    ActivityDetailState state,
+    String? highlightId,
+  ) {
+    final cubit = context.read<ActivityDetailCubit>();
+    final arrows = state.selectedRound?.arrows ?? const <ArrowHit>[];
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (details) =>
+          _updateCrosshair(details.localPosition, targetSize),
+      onTapUp: (details) {
+        _updateCrosshair(details.localPosition, targetSize);
+        _commitArrow(cubit, targetSize);
+      },
+      onTapCancel: _hideCrosshair,
+      onPanStart: (details) =>
+          _updateCrosshair(details.localPosition, targetSize),
+      onPanUpdate: (details) =>
+          _updateCrosshair(details.localPosition, targetSize),
+      onPanEnd: (_) => _commitArrow(cubit, targetSize),
+      onPanCancel: _hideCrosshair,
+      child: SizedBox(
+        width: targetSize.width,
+        height: targetSize.height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(
+              painter: ArcheryTargetPainter(
+                arrows: arrows,
+                highlightedArrowId: highlightId,
+                targetFaceType: state.activity.targetFaceType,
+              ),
+            ),
+            if (_crosshairPosition != null)
+              CustomPaint(
+                painter: _CrosshairPainter(position: _crosshairPosition!),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -415,8 +474,7 @@ class _RoundHeader extends StatelessWidget {
                       width: pillWidth,
                       child: _ArrowScorePill(
                         score: sortedArrows[i].score,
-                        isHighlighted:
-                            highlightedArrowId == sortedArrows[i].id,
+                        isHighlighted: highlightedArrowId == sortedArrows[i].id,
                         onTap: () => onArrowTap(sortedArrows[i]),
                         onLongPress: () => onArrowLongPress(sortedArrows[i]),
                       ),
@@ -493,10 +551,7 @@ class _ArrowScorePill extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Center(
               child: Text(
                 '$score',

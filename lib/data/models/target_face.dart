@@ -5,6 +5,7 @@ enum TargetFaceType {
   fullTenRing,
   half80cmSixRing,
   verticalTripleSixRing,
+  triangularTripleSixRing,
 }
 
 extension TargetFaceTypeX on TargetFaceType {
@@ -16,6 +17,8 @@ extension TargetFaceTypeX on TargetFaceType {
         return '80cm 6-ring (6-10 only)';
       case TargetFaceType.verticalTripleSixRing:
         return '40cm vertical triple (6-10)';
+      case TargetFaceType.triangularTripleSixRing:
+        return '40cm triangular triple (6-10)';
     }
   }
 
@@ -27,6 +30,8 @@ extension TargetFaceTypeX on TargetFaceType {
         return '80cm target face with only 6-10 rings; outside is 0.';
       case TargetFaceType.verticalTripleSixRing:
         return 'Three stacked 40cm faces (6-10 only), vertical strip.';
+      case TargetFaceType.triangularTripleSixRing:
+        return 'Three 40cm faces in a triangle (6-10 only).';
     }
   }
 
@@ -38,6 +43,8 @@ extension TargetFaceTypeX on TargetFaceType {
         return 'half_80cm_6ring';
       case TargetFaceType.verticalTripleSixRing:
         return 'vertical_triple_6ring';
+      case TargetFaceType.triangularTripleSixRing:
+        return 'triangular_triple_6ring';
     }
   }
 
@@ -47,6 +54,8 @@ extension TargetFaceTypeX on TargetFaceType {
         return TargetFaceType.half80cmSixRing;
       case 'vertical_triple_6ring':
         return TargetFaceType.verticalTripleSixRing;
+      case 'triangular_triple_6ring':
+        return TargetFaceType.triangularTripleSixRing;
       case 'full_ten':
       default:
         return TargetFaceType.fullTenRing;
@@ -67,6 +76,16 @@ extension TargetFaceTypeX on TargetFaceType {
           TargetSpot(center: Offset(size.width / 2, radius), radius: radius),
           TargetSpot(center: Offset(size.width / 2, size.height / 2), radius: radius),
           TargetSpot(center: Offset(size.width / 2, size.height - radius), radius: radius),
+        ];
+      case TargetFaceType.triangularTripleSixRing:
+        final radius = math.min(size.width / 3.6, size.height / 4.2);
+        final top = Offset(size.width / 2, radius);
+        final bottomY = size.height - radius;
+        final xOffset = radius * 1.28;
+        return [
+          TargetSpot(center: top, radius: radius),
+          TargetSpot(center: Offset(size.width / 2 - xOffset, bottomY), radius: radius),
+          TargetSpot(center: Offset(size.width / 2 + xOffset, bottomY), radius: radius),
         ];
     }
   }

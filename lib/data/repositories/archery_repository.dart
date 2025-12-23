@@ -241,6 +241,7 @@ class ArcheryRepository {
         if (ratio <= 1.00) return 6;
         return 0;
       case TargetFaceType.verticalTripleSixRing:
+      case TargetFaceType.triangularTripleSixRing:
         if (ratio <= 0.20) return 10;
         if (ratio <= 0.40) return 9;
         if (ratio <= 0.60) return 8;

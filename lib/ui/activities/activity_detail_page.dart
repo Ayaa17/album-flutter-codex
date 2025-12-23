@@ -759,6 +759,14 @@ class ArcheryTargetPainter extends CustomPainter {
           Colors.red.shade900,
           Colors.blue,
         ];
+      case TargetFaceType.triangularTripleSixRing:
+        return [
+          Colors.yellow,
+          Colors.yellow.shade700,
+          Colors.red,
+          Colors.red.shade900,
+          Colors.blue,
+        ];
       case TargetFaceType.fullTenRing:
         return [
           Colors.yellow,

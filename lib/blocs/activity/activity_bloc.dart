@@ -32,7 +32,8 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
   ) async {
     await _loadActivities(
       emit,
-      loading: state.status == ActivityStatus.initial,
+      // loading: state.status == ActivityStatus.initial,
+      loading: true,
     );
   }
 

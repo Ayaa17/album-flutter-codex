@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,8 +16,15 @@ import '../activities/activity_detail_page.dart';
 import '../common/activity_card.dart';
 import '../common/empty_state.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _statsReloadTick = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +49,7 @@ class HomePage extends StatelessWidget {
             }
             if (state.activities.isEmpty) {
               return RefreshIndicator(
-                onRefresh: () async =>
-                    context.read<ActivityBloc>().add(const ActivityRefreshed()),
+                onRefresh: () => _refreshActivities(context),
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -63,8 +70,7 @@ class HomePage extends StatelessWidget {
 
             final recent = state.activities.take(5).toList();
             return RefreshIndicator(
-              onRefresh: () async =>
-                  context.read<ActivityBloc>().add(const ActivityRefreshed()),
+              onRefresh: () => _refreshActivities(context),
               child: ListView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -72,7 +78,10 @@ class HomePage extends StatelessWidget {
                 ),
                 children: [
                   const SizedBox(height: 12),
-                  _StatsSection(activities: state.activities),
+                  _StatsSection(
+                    key: ValueKey(_statsReloadTick),
+                    activities: state.activities,
+                  ),
                   const SizedBox(height: 20),
                   Text(
                     'Recent sessions',
@@ -255,10 +264,40 @@ class HomePage extends StatelessWidget {
   }
 
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  Future<void> _refreshActivities(BuildContext context) async {
+    final bloc = context.read<ActivityBloc>();
+    final nextState = bloc.stream.firstWhere(
+      (state) =>
+          state.status == ActivityStatus.success ||
+          state.status == ActivityStatus.failure,
+    ).timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Refresh timed out. Please try again.')),
+          );
+        }
+        return bloc.state;
+      },
+    );
+    bloc.add(const ActivityRefreshed());
+    try {
+      await nextState;
+    } finally {
+      if (mounted) {
+        setState(() => _statsReloadTick++);
+      }
+    }
+  }
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.activities});
+  const _StatsSection({
+    super.key,
+    required this.activities,
+  });
 
   final List<Activity> activities;
 

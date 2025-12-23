@@ -223,7 +223,7 @@ class ActivitiesPage extends StatelessWidget {
         return AlertDialog(
           title: const Text('Delete activity'),
           content: Text(
-            'Delete “${activity.name}”? This removes all associated rounds and photos.',
+            'Delete "${activity.name}"? This removes all associated rounds and photos.',
           ),
           actions: [
             TextButton(
@@ -243,3 +243,4 @@ class ActivitiesPage extends StatelessWidget {
     );
   }
 }
+

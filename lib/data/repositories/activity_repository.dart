@@ -126,7 +126,8 @@ class ActivityRepository {
 
   Future<Activity?> _loadActivityFromDirectory(Directory directory) async {
     if (!await directory.exists()) return null;
-    final metadata = await _readMetadata(directory);
+    final metadata = await _tryReadMetadata(directory);
+    if (metadata == null) return null;
 
     File? cover;
     DateTime? latestModified;
@@ -153,31 +154,30 @@ class ActivityRepository {
   }
 
   Future<_ActivityMetadata> _readMetadata(Directory directory) async {
-    final file = File(p.join(directory.path, _metadataFileName));
-    if (await file.exists()) {
-      try {
-        final raw =
-            jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-        final createdAtString = raw['createdAt'] as String?;
-        return _ActivityMetadata(
-          id: raw['id'] as String? ?? p.basename(directory.path),
-          name: (raw['name'] as String?)?.trim() ?? p.basename(directory.path),
-          createdAt: createdAtString == null
-              ? DateTime.now()
-              : DateTime.parse(createdAtString),
-        );
-      } catch (_) {
-        // fall through to recreate metadata.
-      }
+    final metadata = await _tryReadMetadata(directory);
+    if (metadata == null) {
+      throw StateError('Missing or invalid metadata for ${directory.path}');
     }
+    return metadata;
+  }
 
-    final fallback = _ActivityMetadata(
-      id: p.basename(directory.path),
-      name: p.basename(directory.path),
-      createdAt: DateTime.now(),
-    );
-    await _writeMetadata(directory, fallback);
-    return fallback;
+  Future<_ActivityMetadata?> _tryReadMetadata(Directory directory) async {
+    final file = File(p.join(directory.path, _metadataFileName));
+    if (!await file.exists()) return null;
+    try {
+      final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final id = (raw['id'] as String?)?.trim();
+      final name = (raw['name'] as String?)?.trim();
+      final createdAtString = (raw['createdAt'] as String?)?.trim();
+      if (id == null || id.isEmpty) return null;
+      if (name == null || name.isEmpty) return null;
+      if (createdAtString == null || createdAtString.isEmpty) return null;
+      final createdAt = DateTime.tryParse(createdAtString);
+      if (createdAt == null) return null;
+      return _ActivityMetadata(id: id, name: name, createdAt: createdAt);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _writeMetadata(

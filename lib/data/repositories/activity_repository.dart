@@ -129,19 +129,34 @@ class ActivityRepository {
     final metadata = await _tryReadMetadata(directory);
     if (metadata == null) return null;
 
-    File? cover;
-    DateTime? latestModified;
+    File? capturedCover;
+    DateTime? capturedModified;
+    File? fallbackCover;
+    DateTime? fallbackEarliest;
     var photoCount = 0;
     await for (final entity in directory.list()) {
       if (entity is! File) continue;
       if (!_isImageFile(entity.path)) continue;
-      photoCount += 1;
       final stat = await entity.stat();
-      if (cover == null || stat.modified.isAfter(latestModified!)) {
-        cover = entity;
-        latestModified = stat.modified;
+      photoCount += 1;
+
+      final fileName = p.basename(entity.path);
+      if (fileName.startsWith('photo_')) {
+        if (capturedCover == null ||
+            stat.modified.isAfter(capturedModified ?? DateTime.fromMillisecondsSinceEpoch(0))) {
+          capturedCover = entity;
+          capturedModified = stat.modified;
+        }
+      }
+
+      if (fallbackCover == null ||
+          stat.modified.isBefore(fallbackEarliest ?? DateTime.now())) {
+        fallbackCover = entity;
+        fallbackEarliest = stat.modified;
       }
     }
+
+    final cover = capturedCover ?? fallbackCover;
 
     return Activity(
       id: metadata.id,
@@ -174,7 +189,11 @@ class ActivityRepository {
       if (createdAtString == null || createdAtString.isEmpty) return null;
       final createdAt = DateTime.tryParse(createdAtString);
       if (createdAt == null) return null;
-      return _ActivityMetadata(id: id, name: name, createdAt: createdAt);
+      return _ActivityMetadata(
+        id: id,
+        name: name,
+        createdAt: createdAt,
+      );
     } catch (_) {
       return null;
     }
@@ -243,7 +262,10 @@ class _ActivityMetadata {
   final String name;
   final DateTime createdAt;
 
-  _ActivityMetadata copyWith({String? name, DateTime? createdAt}) {
+  _ActivityMetadata copyWith({
+    String? name,
+    DateTime? createdAt,
+  }) {
     return _ActivityMetadata(
       id: id,
       name: name ?? this.name,

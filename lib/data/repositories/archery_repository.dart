@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../models/archery_models.dart';
+import '../models/target_face.dart';
 import '../services/storage_service.dart';
 
 class ArcheryRepository {
@@ -163,6 +164,7 @@ class ArcheryRepository {
     required String roundId,
     required Offset localPosition,
     required Size targetSize,
+    required TargetFaceType targetFaceType,
   }) async {
     final center = Offset(targetSize.width / 2, targetSize.height / 2);
     final relative = localPosition - center;
@@ -170,7 +172,7 @@ class ArcheryRepository {
     if (renderRadius <= 0) return rounds;
 
     final ratio = relative.distance / renderRadius;
-    final score = _scoreFromRatio(ratio);
+    final score = _scoreFromRatio(ratio, targetFaceType);
     final scale = targetRadius / renderRadius;
     final storedOffset = relative * scale;
 
@@ -227,18 +229,28 @@ class ArcheryRepository {
     return updated;
   }
 
-  int _scoreFromRatio(double ratio) {
-    if (ratio <= 0.10) return 10;
-    if (ratio <= 0.20) return 9;
-    if (ratio <= 0.30) return 8;
-    if (ratio <= 0.40) return 7;
-    if (ratio <= 0.50) return 6;
-    if (ratio <= 0.60) return 5;
-    if (ratio <= 0.70) return 4;
-    if (ratio <= 0.80) return 3;
-    if (ratio <= 0.90) return 2;
-    if (ratio <= 1.00) return 1;
-    return 0;
+  int _scoreFromRatio(double ratio, TargetFaceType targetFaceType) {
+    switch (targetFaceType) {
+      case TargetFaceType.half80cmSixRing:
+        if (ratio <= 0.20) return 10;
+        if (ratio <= 0.40) return 9;
+        if (ratio <= 0.60) return 8;
+        if (ratio <= 0.80) return 7;
+        if (ratio <= 1.00) return 6;
+        return 0;
+      case TargetFaceType.fullTenRing:
+        if (ratio <= 0.10) return 10;
+        if (ratio <= 0.20) return 9;
+        if (ratio <= 0.30) return 8;
+        if (ratio <= 0.40) return 7;
+        if (ratio <= 0.50) return 6;
+        if (ratio <= 0.60) return 5;
+        if (ratio <= 0.70) return 4;
+        if (ratio <= 0.80) return 3;
+        if (ratio <= 0.90) return 2;
+        if (ratio <= 1.00) return 1;
+        return 0;
+    }
   }
 
   Future<File> _roundsFile(String activityId) async {

@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'target_face.dart';
+
 class Activity extends Equatable {
   const Activity({
     required this.id,
@@ -8,6 +10,7 @@ class Activity extends Equatable {
     required this.directoryPath,
     required this.photoCount,
     required this.coverPhotoPath,
+    required this.targetFaceType,
   });
 
   final String id;
@@ -16,6 +19,7 @@ class Activity extends Equatable {
   final String directoryPath;
   final int photoCount;
   final String? coverPhotoPath;
+  final TargetFaceType targetFaceType;
 
   Activity copyWith({
     String? name,
@@ -23,6 +27,7 @@ class Activity extends Equatable {
     String? directoryPath,
     int? photoCount,
     String? coverPhotoPath,
+    TargetFaceType? targetFaceType,
   }) {
     return Activity(
       id: id,
@@ -31,6 +36,7 @@ class Activity extends Equatable {
       directoryPath: directoryPath ?? this.directoryPath,
       photoCount: photoCount ?? this.photoCount,
       coverPhotoPath: coverPhotoPath ?? this.coverPhotoPath,
+      targetFaceType: targetFaceType ?? this.targetFaceType,
     );
   }
 
@@ -42,5 +48,6 @@ class Activity extends Equatable {
     directoryPath,
     photoCount,
     coverPhotoPath,
+    targetFaceType,
   ];
 }

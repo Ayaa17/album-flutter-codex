@@ -8,6 +8,7 @@ import '../../blocs/activity_detail/activity_detail_cubit.dart';
 import '../../blocs/activity_detail/activity_detail_state.dart';
 import '../../data/models/activity.dart';
 import '../../data/models/archery_models.dart';
+import '../../data/models/target_face.dart';
 import '../../data/repositories/archery_repository.dart';
 import '../../data/services/storage_service.dart';
 import '../common/empty_state.dart';
@@ -213,6 +214,9 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                                                   .targetRadius,
                                                           highlightedArrowId:
                                                               highlightId,
+                                                          targetFaceType: state
+                                                              .activity
+                                                              .targetFaceType,
                                                         ),
                                                   ),
                                                   if (_crosshairPosition !=
@@ -670,12 +674,14 @@ class ArcheryTargetPainter extends CustomPainter {
     required this.drawRadius,
     required this.baseRadius,
     this.highlightedArrowId,
+    required this.targetFaceType,
   });
 
   final List<ArrowHit> arrows;
   final double drawRadius;
   final double baseRadius;
   final String? highlightedArrowId;
+  final TargetFaceType targetFaceType;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -683,21 +689,11 @@ class ArcheryTargetPainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
     final scale = drawRadius / baseRadius;
 
-    final rings = [
-      Colors.yellow,
-      Colors.yellow.shade700,
-      Colors.red,
-      Colors.red.shade900,
-      Colors.blue,
-      Colors.blue.shade900,
-      Colors.black,
-      Colors.black87,
-      Colors.white,
-      Colors.white,
-    ];
+    final rings = _ringsFor(targetFaceType);
+    final ringCount = rings.length;
 
-    for (var i = rings.length; i >= 1; i--) {
-      final ringRadius = drawRadius * (i / rings.length);
+    for (var i = ringCount; i >= 1; i--) {
+      final ringRadius = drawRadius * (i / ringCount);
       paint.color = rings[i - 1];
       canvas.drawCircle(center, ringRadius, paint);
     }
@@ -755,7 +751,34 @@ class ArcheryTargetPainter extends CustomPainter {
     return oldDelegate.arrows != arrows ||
         oldDelegate.drawRadius != drawRadius ||
         oldDelegate.baseRadius != baseRadius ||
-        oldDelegate.highlightedArrowId != highlightedArrowId;
+        oldDelegate.highlightedArrowId != highlightedArrowId ||
+        oldDelegate.targetFaceType != targetFaceType;
+  }
+
+  List<Color> _ringsFor(TargetFaceType type) {
+    switch (type) {
+      case TargetFaceType.half80cmSixRing:
+        return [
+          Colors.yellow,
+          Colors.yellow.shade700,
+          Colors.red,
+          Colors.red.shade900,
+          Colors.blue,
+        ];
+      case TargetFaceType.fullTenRing:
+        return [
+          Colors.yellow,
+          Colors.yellow.shade700,
+          Colors.red,
+          Colors.red.shade900,
+          Colors.blue,
+          Colors.blue.shade900,
+          Colors.black,
+          Colors.black87,
+          Colors.white,
+          Colors.white,
+        ];
+    }
   }
 }
 
@@ -813,6 +836,7 @@ class ActivityDetailPreview extends StatelessWidget {
       directoryPath: '.',
       photoCount: 0,
       coverPhotoPath: null,
+      targetFaceType: TargetFaceType.fullTenRing,
     );
 
     return MultiRepositoryProvider(

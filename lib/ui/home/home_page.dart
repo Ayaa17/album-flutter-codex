@@ -11,6 +11,7 @@ import '../../blocs/activity/activity_state.dart';
 import '../../blocs/navigation/navigation_cubit.dart';
 import '../../blocs/settings/settings_cubit.dart';
 import '../../data/models/activity.dart';
+import '../../data/models/target_face.dart';
 import '../../data/repositories/archery_repository.dart';
 import '../activities/activity_detail_page.dart';
 import '../common/activity_card.dart';
@@ -151,40 +152,15 @@ class _HomePageState extends State<HomePage> {
                 subtitle: Text(defaultName),
                 onTap: () async {
                   Navigator.of(sheetContext).pop('create');
-                  final controller = TextEditingController(text: defaultName);
-                  final confirmedName = await showDialog<String>(
-                    context: context,
-                    builder: (dialogContext) {
-                      return AlertDialog(
-                        title: const Text('Create activity'),
-                        content: TextField(
-                          controller: controller,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Activity name',
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () {
-                              final value = controller.text.trim();
-                              Navigator.of(
-                                dialogContext,
-                              ).pop(value.isEmpty ? defaultName : value);
-                            },
-                            child: const Text('Create'),
-                          ),
-                        ],
-                      );
-                    },
+                  final setup = await _promptActivitySetup(
+                    context,
+                    defaultName: defaultName,
+                    confirmLabel: 'Create',
                   );
-                  if (confirmedName != null && context.mounted) {
-                    activityBloc.add(ActivityCreated(confirmedName));
-                  }
+                  if (!context.mounted || setup == null) return;
+                  activityBloc.add(
+                    ActivityCreated(setup.name, setup.targetFaceType),
+                  );
                 },
               ),
               ListTile(
@@ -193,9 +169,17 @@ class _HomePageState extends State<HomePage> {
                 subtitle: const Text(
                   'Auto-create today’s activity and open the camera',
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(sheetContext).pop('quick');
-                  activityBloc.add(ActivityQuickCaptured(defaultName));
+                  final setup = await _promptActivitySetup(
+                    context,
+                    defaultName: defaultName,
+                    confirmLabel: 'Start capture',
+                  );
+                  if (!context.mounted || setup == null) return;
+                  activityBloc.add(
+                    ActivityQuickCaptured(defaultName, setup.targetFaceType),
+                  );
                 },
               ),
               ListTile(
@@ -253,6 +237,84 @@ class _HomePageState extends State<HomePage> {
     if (!context.mounted || selectedId == null) return;
     activityBloc.add(
       ActivityPhotoAdded(id: selectedId, source: ImageSource.camera),
+    );
+  }
+
+  Future<_ActivitySetup?> _promptActivitySetup(
+    BuildContext context, {
+    required String defaultName,
+    required String confirmLabel,
+  }) {
+    final controller = TextEditingController(text: defaultName);
+    TargetFaceType selected = TargetFaceType.fullTenRing;
+    return showDialog<_ActivitySetup>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
+            return AlertDialog(
+              title: const Text('New activity'),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              content: SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: bottomInset),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Activity name',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Target face',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    ...TargetFaceType.values.map(
+                      (type) => RadioListTile<TargetFaceType>(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        value: type,
+                        groupValue: selected,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => selected = value);
+                        },
+                        title: Text(type.label),
+                        subtitle: Text(type.description),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = controller.text.trim().isEmpty
+                        ? defaultName
+                        : controller.text.trim();
+                    Navigator.of(dialogContext).pop(
+                      _ActivitySetup(
+                        name: name,
+                        targetFaceType: selected,
+                      ),
+                    );
+                  },
+                  child: Text(confirmLabel),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -761,4 +823,11 @@ class _Snapshot {
   final int arrows;
   final int bestRoundScore;
   final double averageRoundScore;
+}
+
+class _ActivitySetup {
+  const _ActivitySetup({required this.name, required this.targetFaceType});
+
+  final String name;
+  final TargetFaceType targetFaceType;
 }

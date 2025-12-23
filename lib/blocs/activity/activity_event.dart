@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../data/models/target_face.dart';
+
 class ActivityEvent extends Equatable {
   const ActivityEvent();
 
@@ -17,21 +19,23 @@ class ActivityRefreshed extends ActivityEvent {
 }
 
 class ActivityCreated extends ActivityEvent {
-  const ActivityCreated(this.name);
+  const ActivityCreated(this.name, this.targetFaceType);
 
   final String name;
+  final TargetFaceType targetFaceType;
 
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [name, targetFaceType];
 }
 
 class ActivityQuickCaptured extends ActivityEvent {
-  const ActivityQuickCaptured(this.defaultName);
+  const ActivityQuickCaptured(this.defaultName, this.targetFaceType);
 
   final String defaultName;
+  final TargetFaceType targetFaceType;
 
   @override
-  List<Object?> get props => [defaultName];
+  List<Object?> get props => [defaultName, targetFaceType];
 }
 
 class ActivityRenamed extends ActivityEvent {

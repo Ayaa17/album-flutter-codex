@@ -133,6 +133,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
         roundId: round.id,
         localPosition: localPosition,
         targetSize: targetSize,
+        targetFaceType: state.activity.targetFaceType,
       );
       final latestRound = updated.firstWhere(
         (element) => element.id == round.id,

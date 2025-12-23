@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import '../models/activity.dart';
+import '../models/target_face.dart';
 import '../models/photo_entry.dart';
 import '../services/storage_service.dart';
 
@@ -39,7 +40,10 @@ class ActivityRepository {
     return activities;
   }
 
-  Future<Activity> createActivity(String name) async {
+  Future<Activity> createActivity(
+    String name, {
+    TargetFaceType targetFaceType = TargetFaceType.fullTenRing,
+  }) async {
     final sanitized = _sanitizeFileName(name);
     final id = '${DateTime.now().millisecondsSinceEpoch}_$sanitized';
     final directory = await _storageService.ensureActivityDirectory(id);
@@ -47,6 +51,7 @@ class ActivityRepository {
       id: id,
       name: name.trim().isEmpty ? 'Event ${DateTime.now().year}' : name.trim(),
       createdAt: DateTime.now(),
+      targetFaceType: targetFaceType,
     );
     await _writeMetadata(directory, metadata);
     return Activity(
@@ -56,17 +61,24 @@ class ActivityRepository {
       directoryPath: directory.path,
       photoCount: 0,
       coverPhotoPath: null,
+      targetFaceType: targetFaceType,
     );
   }
 
-  Future<Activity> quickCapture({required String defaultName}) async {
+  Future<Activity> quickCapture({
+    required String defaultName,
+    TargetFaceType targetFaceType = TargetFaceType.fullTenRing,
+  }) async {
     final activities = await loadActivities();
     final existing = activities
-        .where((item) => item.name == defaultName)
+        .where(
+          (item) =>
+              item.name == defaultName && item.targetFaceType == targetFaceType,
+        )
         .toList();
     final target = existing.isNotEmpty
         ? existing.first
-        : await createActivity(defaultName);
+        : await createActivity(defaultName, targetFaceType: targetFaceType);
     final captured = await _capturePhotoForActivity(target.id);
     if (captured == null) {
       return target;
@@ -165,6 +177,7 @@ class ActivityRepository {
       directoryPath: directory.path,
       photoCount: photoCount,
       coverPhotoPath: cover?.path,
+      targetFaceType: metadata.targetFaceType,
     );
   }
 
@@ -184,6 +197,7 @@ class ActivityRepository {
       final id = (raw['id'] as String?)?.trim();
       final name = (raw['name'] as String?)?.trim();
       final createdAtString = (raw['createdAt'] as String?)?.trim();
+      final targetFaceRaw = raw['targetFace'] as String?;
       if (id == null || id.isEmpty) return null;
       if (name == null || name.isEmpty) return null;
       if (createdAtString == null || createdAtString.isEmpty) return null;
@@ -193,6 +207,7 @@ class ActivityRepository {
         id: id,
         name: name,
         createdAt: createdAt,
+        targetFaceType: TargetFaceTypeX.fromStorage(targetFaceRaw),
       );
     } catch (_) {
       return null;
@@ -208,6 +223,7 @@ class ActivityRepository {
       'id': metadata.id,
       'name': metadata.name,
       'createdAt': metadata.createdAt.toIso8601String(),
+      'targetFace': metadata.targetFaceType.storageKey,
     });
     await file.writeAsString(payload, flush: true);
   }
@@ -256,20 +272,24 @@ class _ActivityMetadata {
     required this.id,
     required this.name,
     required this.createdAt,
+    required this.targetFaceType,
   });
 
   final String id;
   final String name;
   final DateTime createdAt;
+  final TargetFaceType targetFaceType;
 
   _ActivityMetadata copyWith({
     String? name,
     DateTime? createdAt,
+    TargetFaceType? targetFaceType,
   }) {
     return _ActivityMetadata(
       id: id,
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
+      targetFaceType: targetFaceType ?? this.targetFaceType,
     );
   }
 }

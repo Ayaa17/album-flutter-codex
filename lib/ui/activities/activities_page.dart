@@ -6,6 +6,7 @@ import '../../blocs/activity/activity_bloc.dart';
 import '../../blocs/activity/activity_event.dart';
 import '../../blocs/activity/activity_state.dart';
 import '../../data/models/activity.dart';
+import '../../data/models/target_face.dart';
 import '../common/activity_card.dart';
 import 'activity_detail_page.dart';
 
@@ -69,37 +70,12 @@ class ActivitiesPage extends StatelessWidget {
     );
   }
 
-  void _createActivity(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add Activity'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Activity name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final name = controller.text.trim();
-                if (name.isNotEmpty) {
-                  context.read<ActivityBloc>().add(ActivityCreated(name));
-                  Navigator.of(dialogContext).pop();
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> _createActivity(BuildContext context) async {
+    final setup = await _promptActivitySetup(context);
+    if (setup == null || !context.mounted) return;
+    context
+        .read<ActivityBloc>()
+        .add(ActivityCreated(setup.name, setup.targetFaceType));
   }
 
   void _openActivityDetail(BuildContext context, Activity activity) {
@@ -223,6 +199,85 @@ class ActivitiesPage extends StatelessWidget {
       },
     );
   }
+
+  Future<_ActivitySetup?> _promptActivitySetup(BuildContext context) async {
+    final controller = TextEditingController();
+    TargetFaceType selected = TargetFaceType.fullTenRing;
+    return showDialog<_ActivitySetup>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Activity'),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(labelText: 'Activity name'),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Target face',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    ...TargetFaceType.values.map(
+                      (type) => RadioListTile<TargetFaceType>(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        value: type,
+                        groupValue: selected,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => selected = value);
+                        },
+                        title: Text(type.label),
+                        subtitle: Text(type.description),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = controller.text.trim();
+                    if (name.isEmpty) {
+                      Navigator.of(dialogContext).pop();
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(
+                      _ActivitySetup(
+                        name: name,
+                        targetFaceType: selected,
+                      ),
+                    );
+                  },
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ActivitySetup {
+  const _ActivitySetup({required this.name, required this.targetFaceType});
+
+  final String name;
+  final TargetFaceType targetFaceType;
 }
 
 class _ActivitiesHeader extends StatelessWidget {

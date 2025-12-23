@@ -43,7 +43,10 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
   ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
-      await _repository.createActivity(event.name);
+      await _repository.createActivity(
+        event.name,
+        targetFaceType: event.targetFaceType,
+      );
       await _loadActivities(emit);
       emit(state.copyWith(message: 'Activity created.'));
     } catch (_) {
@@ -62,7 +65,10 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
   ) async {
     emit(state.copyWith(status: ActivityStatus.loading, message: null));
     try {
-      await _repository.quickCapture(defaultName: event.defaultName);
+      await _repository.quickCapture(
+        defaultName: event.defaultName,
+        targetFaceType: event.targetFaceType,
+      );
       await _loadActivities(emit);
       emit(state.copyWith(message: 'Quick capture saved.'));
     } catch (_) {

@@ -113,11 +113,12 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateSheet(context),
-        icon: const Icon(Icons.add_a_photo_outlined),
-        label: const Text('Add / Capture'),
-      ),
+      // floating button 
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: () => _showCreateSheet(context),
+      //   icon: const Icon(Icons.add_a_photo_outlined),
+      //   label: const Text('Add / Capture'),
+      // ),
     );
   }
 

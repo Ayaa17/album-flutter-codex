@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -166,9 +164,12 @@ class ArcheryRepository {
     required Size targetSize,
     required TargetFaceType targetFaceType,
   }) async {
-    final center = Offset(targetSize.width / 2, targetSize.height / 2);
-    final relative = localPosition - center;
-    final renderRadius = math.min(targetSize.width, targetSize.height) / 2;
+    final spots = targetFaceType.layoutSpots(targetSize);
+    if (spots.isEmpty) return rounds;
+    final nearestIndex = _nearestSpotIndex(spots, localPosition);
+    final spot = spots[nearestIndex];
+    final relative = localPosition - spot.center;
+    final renderRadius = spot.radius;
     if (renderRadius <= 0) return rounds;
 
     final ratio = relative.distance / renderRadius;
@@ -181,6 +182,7 @@ class ArcheryRepository {
       position: storedOffset,
       score: score,
       createdAt: DateTime.now(),
+      targetIndex: nearestIndex,
     );
 
     final updated = rounds.map((round) {
@@ -238,6 +240,13 @@ class ArcheryRepository {
         if (ratio <= 0.80) return 7;
         if (ratio <= 1.00) return 6;
         return 0;
+      case TargetFaceType.verticalTripleSixRing:
+        if (ratio <= 0.20) return 10;
+        if (ratio <= 0.40) return 9;
+        if (ratio <= 0.60) return 8;
+        if (ratio <= 0.80) return 7;
+        if (ratio <= 1.00) return 6;
+        return 0;
       case TargetFaceType.fullTenRing:
         if (ratio <= 0.10) return 10;
         if (ratio <= 0.20) return 9;
@@ -256,5 +265,18 @@ class ArcheryRepository {
   Future<File> _roundsFile(String activityId) async {
     final directory = await _storageService.ensureActivityDirectory(activityId);
     return File(p.join(directory.path, _roundsFileName));
+  }
+
+  int _nearestSpotIndex(List<TargetSpot> spots, Offset point) {
+    var bestIndex = 0;
+    var bestDistance = double.infinity;
+    for (var i = 0; i < spots.length; i++) {
+      final distance = (point - spots[i].center).distance;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
   }
 }

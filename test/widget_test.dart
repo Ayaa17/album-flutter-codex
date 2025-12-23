@@ -11,6 +11,7 @@ import 'package:flutter_album_codex/blocs/navigation/navigation_cubit.dart';
 import 'package:flutter_album_codex/blocs/settings/settings_cubit.dart';
 import 'package:flutter_album_codex/data/models/activity.dart';
 import 'package:flutter_album_codex/data/models/app_settings.dart';
+import 'package:flutter_album_codex/data/models/target_face.dart';
 import 'package:flutter_album_codex/data/repositories/activity_repository.dart';
 import 'package:flutter_album_codex/data/repositories/settings_repository.dart';
 import 'package:flutter_album_codex/data/services/storage_service.dart';
@@ -51,6 +52,7 @@ void main() {
         directoryPath: Directory.systemTemp.path,
         photoCount: 0,
         coverPhotoPath: null,
+        targetFaceType: TargetFaceType.fullTenRing,
       ),
     ];
 

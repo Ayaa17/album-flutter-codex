@@ -206,12 +206,6 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                                     painter:
                                                         ArcheryTargetPainter(
                                                           arrows: arrows,
-                                                          drawRadius:
-                                                              targetSize.width /
-                                                              2,
-                                                          baseRadius:
-                                                              ArcheryRepository
-                                                                  .targetRadius,
                                                           highlightedArrowId:
                                                               highlightId,
                                                           targetFaceType: state
@@ -671,55 +665,49 @@ class _RoundList extends StatelessWidget {
 class ArcheryTargetPainter extends CustomPainter {
   ArcheryTargetPainter({
     required this.arrows,
-    required this.drawRadius,
-    required this.baseRadius,
     this.highlightedArrowId,
     required this.targetFaceType,
   });
 
   final List<ArrowHit> arrows;
-  final double drawRadius;
-  final double baseRadius;
   final String? highlightedArrowId;
   final TargetFaceType targetFaceType;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()..style = PaintingStyle.fill;
-    final scale = drawRadius / baseRadius;
+    final spots = targetFaceType.layoutSpots(size);
+    if (spots.isEmpty) return;
 
     final rings = _ringsFor(targetFaceType);
     final ringCount = rings.length;
 
-    for (var i = ringCount; i >= 1; i--) {
-      final ringRadius = drawRadius * (i / ringCount);
-      paint.color = rings[i - 1];
-      canvas.drawCircle(center, ringRadius, paint);
-    }
+    for (final spot in spots) {
+      paint
+        ..style = PaintingStyle.fill
+        ..strokeWidth = 1.0;
+      for (var i = ringCount; i >= 1; i--) {
+        final ringRadius = spot.radius * (i / ringCount);
+        paint.color = rings[i - 1];
+        canvas.drawCircle(spot.center, ringRadius, paint);
+      }
 
-    paint
-      ..color = Colors.black54
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, drawRadius, paint);
-    canvas.drawLine(
-      Offset(center.dx - drawRadius, center.dy),
-      Offset(center.dx + drawRadius, center.dy),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(center.dx, center.dy - drawRadius),
-      Offset(center.dx, center.dy + drawRadius),
-      paint,
-    );
+      paint
+        ..color = Colors.black54
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+      canvas.drawCircle(spot.center, spot.radius, paint);
+    }
 
     for (final arrow in arrows) {
       final isHighlighted = arrow.id == highlightedArrowId;
+      final spotIndex = arrow.targetIndex.clamp(0, spots.length - 1);
+      final spot = spots[spotIndex];
+      final scale = spot.radius / ArcheryRepository.targetRadius;
       final arrowPaint = Paint()
         ..style = PaintingStyle.fill
         ..color = isHighlighted ? Colors.orange : Colors.deepPurple;
-      final absolute = center + arrow.position * scale;
+      final absolute = spot.center + arrow.position * scale;
       canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
       if (isHighlighted) {
         final ring = Paint()
@@ -749,8 +737,6 @@ class ArcheryTargetPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ArcheryTargetPainter oldDelegate) {
     return oldDelegate.arrows != arrows ||
-        oldDelegate.drawRadius != drawRadius ||
-        oldDelegate.baseRadius != baseRadius ||
         oldDelegate.highlightedArrowId != highlightedArrowId ||
         oldDelegate.targetFaceType != targetFaceType;
   }
@@ -758,6 +744,14 @@ class ArcheryTargetPainter extends CustomPainter {
   List<Color> _ringsFor(TargetFaceType type) {
     switch (type) {
       case TargetFaceType.half80cmSixRing:
+        return [
+          Colors.yellow,
+          Colors.yellow.shade700,
+          Colors.red,
+          Colors.red.shade900,
+          Colors.blue,
+        ];
+      case TargetFaceType.verticalTripleSixRing:
         return [
           Colors.yellow,
           Colors.yellow.shade700,
@@ -875,18 +869,26 @@ Future<void> _seedMockData(
 
   final roundA = ArcheryRound.create().copyWith(
     arrows: [
-      ArrowHit(id: uuid.v4(), position: Offset.zero, score: 10, createdAt: now),
+      ArrowHit(
+        id: uuid.v4(),
+        position: Offset.zero,
+        score: 10,
+        createdAt: now,
+        targetIndex: 0,
+      ),
       ArrowHit(
         id: uuid.v4(),
         position: const Offset(24, -12),
         score: 9,
         createdAt: now,
+        targetIndex: 0,
       ),
       ArrowHit(
         id: uuid.v4(),
         position: const Offset(-48, 30),
         score: 7,
         createdAt: now,
+        targetIndex: 0,
       ),
     ],
   );
@@ -898,18 +900,21 @@ Future<void> _seedMockData(
         position: const Offset(65, -40),
         score: 5,
         createdAt: now,
+        targetIndex: 0,
       ),
       ArrowHit(
         id: uuid.v4(),
         position: const Offset(-90, -20),
         score: 4,
         createdAt: now,
+        targetIndex: 0,
       ),
       ArrowHit(
         id: uuid.v4(),
         position: const Offset(140, 30),
         score: 1,
         createdAt: now,
+        targetIndex: 0,
       ),
     ],
   );

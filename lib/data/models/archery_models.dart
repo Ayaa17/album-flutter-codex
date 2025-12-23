@@ -12,14 +12,16 @@ class ArrowHit extends Equatable {
     required this.position,
     required this.score,
     required this.createdAt,
+    required this.targetIndex,
   });
 
-  ArrowHit createCopy({Offset? position, int? score}) {
+  ArrowHit createCopy({Offset? position, int? score, int? targetIndex}) {
     return ArrowHit(
       id: id,
       position: position ?? this.position,
       score: score ?? this.score,
       createdAt: createdAt,
+      targetIndex: targetIndex ?? this.targetIndex,
     );
   }
 
@@ -31,6 +33,7 @@ class ArrowHit extends Equatable {
         (map['dy'] as num?)?.toDouble() ?? 0,
       ),
       score: map['score'] as int? ?? 0,
+      targetIndex: map['targetIndex'] as int? ?? 0,
       createdAt:
           DateTime.tryParse(map['createdAt'] as String? ?? '') ??
           DateTime.now(),
@@ -43,6 +46,7 @@ class ArrowHit extends Equatable {
       'dx': position.dx,
       'dy': position.dy,
       'score': score,
+      'targetIndex': targetIndex,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -51,9 +55,17 @@ class ArrowHit extends Equatable {
   final Offset position;
   final int score;
   final DateTime createdAt;
+  final int targetIndex;
 
   @override
-  List<Object?> get props => [id, position.dx, position.dy, score, createdAt];
+  List<Object?> get props => [
+    id,
+    position.dx,
+    position.dy,
+    score,
+    createdAt,
+    targetIndex,
+  ];
 }
 
 class ArcheryRound extends Equatable {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_album_codex/utils.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -113,7 +114,7 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-      // floating button 
+      // floating button
       // floatingActionButton: FloatingActionButton.extended(
       //   onPressed: () => _showCreateSheet(context),
       //   icon: const Icon(Icons.add_a_photo_outlined),
@@ -135,7 +136,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> _showCreateSheet(BuildContext context) async {
     final activityBloc = context.read<ActivityBloc>();
     final settings = context.read<SettingsCubit>().state.settings;
-    final defaultName = _formatActivityName(settings.defaultActivityNameFormat);
+    final defaultName = Utils.formatActivityName(
+      settings.defaultActivityNameFormat,
+    );
 
     await showModalBottomSheet<String>(
       context: context,
@@ -302,12 +305,9 @@ class _HomePageState extends State<HomePage> {
                     final name = controller.text.trim().isEmpty
                         ? defaultName
                         : controller.text.trim();
-                    Navigator.of(dialogContext).pop(
-                      _ActivitySetup(
-                        name: name,
-                        targetFaceType: selected,
-                      ),
-                    );
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(_ActivitySetup(name: name, targetFaceType: selected));
                   },
                   child: Text(confirmLabel),
                 ),
@@ -319,32 +319,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  String _formatActivityName(String template) {
-    final now = DateTime.now();
-    final formattedDate =
-        '${now.year}-${_twoDigits(now.month)}-${_twoDigits(now.day)}';
-    return template.replaceAll('{date}', formattedDate);
-  }
-
-  String _twoDigits(int value) => value.toString().padLeft(2, '0');
-
   Future<void> _refreshActivities(BuildContext context) async {
     final bloc = context.read<ActivityBloc>();
-    final nextState = bloc.stream.firstWhere(
-      (state) =>
-          state.status == ActivityStatus.success ||
-          state.status == ActivityStatus.failure,
-    ).timeout(
-      const Duration(seconds: 8),
-      onTimeout: () {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Refresh timed out. Please try again.')),
-          );
-        }
-        return bloc.state;
-      },
-    );
+    final nextState = bloc.stream
+        .firstWhere(
+          (state) =>
+              state.status == ActivityStatus.success ||
+              state.status == ActivityStatus.failure,
+        )
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Refresh timed out. Please try again.'),
+                ),
+              );
+            }
+            return bloc.state;
+          },
+        );
     bloc.add(const ActivityRefreshed());
     try {
       await nextState;
@@ -357,10 +352,7 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({
-    super.key,
-    required this.activities,
-  });
+  const _StatsSection({super.key, required this.activities});
 
   final List<Activity> activities;
 
@@ -396,12 +388,11 @@ class _StatsSection extends StatelessWidget {
 
                 final crossAxisCount = math.max(
                   1,
-                  ((constraints.maxWidth + spacing) /
-                          (targetWidth + spacing))
+                  ((constraints.maxWidth + spacing) / (targetWidth + spacing))
                       .floor(),
                 );
-                final actualWidth = (constraints.maxWidth -
-                        (crossAxisCount - 1) * spacing) /
+                final actualWidth =
+                    (constraints.maxWidth - (crossAxisCount - 1) * spacing) /
                     crossAxisCount;
                 final childAspectRatio = actualWidth / targetHeight;
 
@@ -482,9 +473,14 @@ class _StatsSection extends StatelessWidget {
         0,
         (sum, round) => sum + round.arrows.length,
       );
-      final scoreSum = rounds.fold<int>(0, (sum, round) => sum + round.totalScore);
-      final bestRound =
-          rounds.fold<int>(0, (best, round) => math.max(best, round.totalScore));
+      final scoreSum = rounds.fold<int>(
+        0,
+        (sum, round) => sum + round.totalScore,
+      );
+      final bestRound = rounds.fold<int>(
+        0,
+        (best, round) => math.max(best, round.totalScore),
+      );
 
       totalRounds += rounds.length;
       totalArrows += arrowsCount;
@@ -492,7 +488,8 @@ class _StatsSection extends StatelessWidget {
       bestRoundScore = math.max(bestRoundScore, bestRound);
 
       final isThisMonth =
-          activity.createdAt.year == now.year && activity.createdAt.month == now.month;
+          activity.createdAt.year == now.year &&
+          activity.createdAt.month == now.month;
       if (isThisMonth) {
         monthActivities += 1;
         monthRounds += roundCount;
@@ -509,12 +506,15 @@ class _StatsSection extends StatelessWidget {
       }
     }
 
-    final double averageRoundScore =
-        totalRounds == 0 ? 0.0 : totalScore.toDouble() / totalRounds;
-    final double monthAverage =
-        monthRounds == 0 ? 0.0 : monthScore.toDouble() / monthRounds;
-    final double latestAverage =
-        latestRounds == 0 ? 0.0 : latestScore.toDouble() / latestRounds;
+    final double averageRoundScore = totalRounds == 0
+        ? 0.0
+        : totalScore.toDouble() / totalRounds;
+    final double monthAverage = monthRounds == 0
+        ? 0.0
+        : monthScore.toDouble() / monthRounds;
+    final double latestAverage = latestRounds == 0
+        ? 0.0
+        : latestScore.toDouble() / latestRounds;
 
     return _ActivityStats(
       latest: latestActivity == null
@@ -577,10 +577,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            primary.withValues(alpha: 0.10),
-            colorScheme.surface,
-          ],
+          colors: [primary.withValues(alpha: 0.10), colorScheme.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -642,13 +639,13 @@ class _StatCard extends StatelessWidget {
             Divider(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             const SizedBox(height: 10),
             Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: details
-                .map(
-                  (entry) => _StatPill(
-                    label: entry.label,
-                    value: entry.value.toString(),
+              spacing: 10,
+              runSpacing: 10,
+              children: details
+                  .map(
+                    (entry) => _StatPill(
+                      label: entry.label,
+                      value: entry.value.toString(),
                     ),
                   )
                   .toList(),
@@ -689,9 +686,7 @@ class _StatPill extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.hintColor,
-            ),
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.hintColor),
           ),
           const SizedBox(height: 4),
           Text(
@@ -727,9 +722,7 @@ class _StatFigure extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.hintColor,
-          ),
+          style: theme.textTheme.labelMedium?.copyWith(color: theme.hintColor),
         ),
       ],
     );
@@ -747,9 +740,7 @@ class _StatPlaceholder extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

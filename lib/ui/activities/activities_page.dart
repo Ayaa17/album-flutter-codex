@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_album_codex/blocs/settings/settings_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -9,6 +10,7 @@ import '../../data/models/activity.dart';
 import '../../data/models/target_face.dart';
 import '../common/activity_card.dart';
 import 'activity_detail_page.dart';
+import '../../utils.dart';
 
 class ActivitiesPage extends StatelessWidget {
   const ActivitiesPage({super.key});
@@ -71,7 +73,10 @@ class ActivitiesPage extends StatelessWidget {
   }
 
   Future<void> _createActivity(BuildContext context) async {
-    final setup = await _promptActivitySetup(context);
+
+    final settings = context.read<SettingsCubit>().state.settings;
+    final defaultName = Utils.formatActivityName(settings.defaultActivityNameFormat);
+    final setup = await _promptActivitySetup(context, defaultName:defaultName);
     if (setup == null || !context.mounted) return;
     context
         .read<ActivityBloc>()
@@ -200,8 +205,8 @@ class ActivitiesPage extends StatelessWidget {
     );
   }
 
-  Future<_ActivitySetup?> _promptActivitySetup(BuildContext context) async {
-    final controller = TextEditingController();
+  Future<_ActivitySetup?> _promptActivitySetup(BuildContext context, {String? defaultName}) async {
+    final controller = TextEditingController(text: defaultName);
     TargetFaceType selected = TargetFaceType.fullTenRing;
     return showDialog<_ActivitySetup>(
       context: context,
@@ -218,7 +223,7 @@ class ActivitiesPage extends StatelessWidget {
                   children: [
                     TextField(
                       controller: controller,
-                      autofocus: true,
+                      autofocus: false,
                       decoration: const InputDecoration(labelText: 'Activity name'),
                     ),
                     const SizedBox(height: 12),

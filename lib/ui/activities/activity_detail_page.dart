@@ -136,63 +136,77 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                 );
                               }
 
-                              return Column(
+                              return Stack(
                                 children: [
-                                  SizedBox(
-                                    height: headerHeight,
-                                    child: SingleChildScrollView(
-                                      physics: const ClampingScrollPhysics(),
-                                      child: Align(
-                                        alignment: Alignment.topLeft,
-                                        child: headerContent,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: headerSpacing / 2),
-                                  Expanded(
-                                    child: LayoutBuilder(
-                                      builder: (context, targetConstraints) {
-                                        final available = math.min(
-                                          targetConstraints.maxWidth,
-                                          targetConstraints.maxHeight,
-                                        );
-                                        if (available <= 0) {
-                                          return const SizedBox();
-                                        }
-                                        final targetSize = Size.square(
-                                          available,
-                                        );
-                                        return Center(
-                                          child: _buildTargetCanvas(
-                                            targetSize,
-                                            state,
-                                            highlightId,
+                                  Column(
+                                    children: [
+                                      SizedBox(
+                                        height: headerHeight,
+                                        child: SingleChildScrollView(
+                                          physics:
+                                              const ClampingScrollPhysics(),
+                                          child: Align(
+                                            alignment: Alignment.topLeft,
+                                            child: headerContent,
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton.icon(
-                                      onPressed: () => setState(
-                                        () => _isTargetExpanded = true,
+                                        ),
                                       ),
-                                      icon: const Icon(Icons.open_in_full),
-                                      label: const Text('Expand target'),
-                                    ),
-                                  ),
-
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton.icon(
-                                      onPressed: () => context
-                                          .read<ActivityDetailCubit>()
-                                          .addRound(),
-                                      icon: const Icon(
-                                        Icons.my_location_outlined,
+                                      SizedBox(height: headerSpacing / 2),
+                                      Expanded(
+                                        child: LayoutBuilder(
+                                          builder:
+                                              (context, targetConstraints) {
+                                                final available = math.min(
+                                                  targetConstraints.maxWidth,
+                                                  targetConstraints.maxHeight,
+                                                );
+                                                if (available <= 0) {
+                                                  return const SizedBox();
+                                                }
+                                                final targetSize = Size.square(
+                                                  available,
+                                                );
+                                                return Center(
+                                                  child: _buildTargetCanvas(
+                                                    targetSize,
+                                                    state,
+                                                    highlightId,
+                                                  ),
+                                                );
+                                              },
+                                        ),
                                       ),
-                                      label: const Text('Add Round'),
+                                    ],
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: headerHeight,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          TextButton.icon(
+                                            onPressed: () => setState(
+                                              () => _isTargetExpanded = true,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.open_in_full,
+                                            ),
+                                            label: const Text('Expand target'),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: () => context
+                                                .read<ActivityDetailCubit>()
+                                                .addRound(),
+                                            icon: const Icon(
+                                              Icons.my_location_outlined,
+                                            ),
+                                            label: const Text('Add Round'),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -256,10 +270,12 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                               right: 16,
                               bottom: 16,
                               child: FloatingActionButton.extended(
-                onPressed: () => context.read<ActivityDetailCubit>().addRound(),
-                icon: const Icon(Icons.my_location_outlined),
-                label: const Text('Add Round'),
-              ),
+                                onPressed: () => context
+                                    .read<ActivityDetailCubit>()
+                                    .addRound(),
+                                icon: const Icon(Icons.my_location_outlined),
+                                label: const Text('Add Round'),
+                              ),
                             ),
                           ],
                         ),

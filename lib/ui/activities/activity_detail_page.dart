@@ -43,6 +43,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
   Offset? _pendingArrowPosition;
   String? _highlightedArrowId;
   bool _isTargetExpanded = false;
+  bool _showAllRoundsOnTarget = false;
 
   @override
   Widget build(BuildContext context) {
@@ -101,25 +102,35 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                               const minHeaderHeight = 96.0;
                               const maxHeaderHeight = 96.0;
 
-                              final headerContent = selectedRound != null
-                                  ? _RoundHeader(
-                                      round: selectedRound,
-                                      roundIndex:
-                                          state.rounds.indexWhere(
-                                            (round) =>
-                                                round.id == selectedRound.id,
-                                          ) +
-                                          1,
-                                      highlightedArrowId: highlightId,
-                                      onArrowTap: _handleArrowTap,
-                                      onArrowLongPress: (arrow) =>
-                                          _handleArrowLongPress(
-                                            context,
-                                            selectedRound,
-                                            arrow,
-                                          ),
+                              final headerContent = _showAllRoundsOnTarget
+                                  ? _AllRoundsHeader(
+                                      totalRounds: state.rounds.length,
+                                      totalArrows: state.rounds.fold<int>(
+                                        0,
+                                        (sum, round) =>
+                                            sum + round.arrows.length,
+                                      ),
                                     )
-                                  : const _NoRoundHeader();
+                                  : (selectedRound != null
+                                      ? _RoundHeader(
+                                          round: selectedRound,
+                                          roundIndex:
+                                              state.rounds.indexWhere(
+                                                    (round) =>
+                                                        round.id ==
+                                                        selectedRound.id,
+                                                  ) +
+                                                  1,
+                                          highlightedArrowId: highlightId,
+                                          onArrowTap: _handleArrowTap,
+                                          onArrowLongPress: (arrow) =>
+                                              _handleArrowLongPress(
+                                                context,
+                                                selectedRound,
+                                                arrow,
+                                              ),
+                                        )
+                                      : const _NoRoundHeader());
 
                               final maxHeaderExtent = math.max(
                                 0.0,
@@ -171,6 +182,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                                     targetSize,
                                                     state,
                                                     highlightId,
+                                                    _showAllRoundsOnTarget,
                                                   ),
                                                 );
                                               },
@@ -216,7 +228,21 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                         ),
                       ),
                       const Divider(height: 1),
-                      const Expanded(flex: 4, child: _RoundList()),
+                      Expanded(
+                        flex: 4,
+                        child: _RoundList(
+                          showAllRoundsOnTarget: _showAllRoundsOnTarget,
+                          onAllRoundsToggle: (value) {
+                            setState(() {
+                              _showAllRoundsOnTarget = value;
+                              if (value) _highlightedArrowId = null;
+                            });
+                          },
+                          onRoundSelected: () => setState(
+                            () => _showAllRoundsOnTarget = false,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -251,6 +277,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                     targetSize,
                                     state,
                                     highlightId,
+                                    _showAllRoundsOnTarget,
                                   );
                                 },
                               ),
@@ -370,9 +397,30 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     Size targetSize,
     ActivityDetailState state,
     String? highlightId,
+    bool showAllRounds,
   ) {
     final cubit = context.read<ActivityDetailCubit>();
-    final arrows = state.selectedRound?.arrows ?? const <ArrowHit>[];
+    final selectedRoundId = state.selectedRoundId;
+    final arrows = showAllRounds
+        ? state.rounds
+            .expand(
+              (round) => round.arrows.map(
+                (arrow) => _TargetArrow(
+                  arrow: arrow,
+                  isSelectedRound: round.id == selectedRoundId,
+                ),
+              ),
+            )
+            .toList()
+        : state.selectedRound?.arrows
+                .map(
+                  (arrow) => _TargetArrow(
+                    arrow: arrow,
+                    isSelectedRound: true,
+                  ),
+                )
+                .toList() ??
+            const <_TargetArrow>[];
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -511,6 +559,39 @@ class _RoundHeader extends StatelessWidget {
   }
 }
 
+class _AllRoundsHeader extends StatelessWidget {
+  const _AllRoundsHeader({
+    required this.totalRounds,
+    required this.totalArrows,
+  });
+
+  final int totalRounds;
+  final int totalArrows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'All rounds view',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$totalRounds rounds · $totalArrows arrows',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ArrowScorePill extends StatelessWidget {
   const _ArrowScorePill({
     required this.score,
@@ -592,8 +673,23 @@ class _ArrowScorePill extends StatelessWidget {
   }
 }
 
-class _RoundList extends StatelessWidget {
-  const _RoundList();
+class _RoundList extends StatefulWidget {
+  const _RoundList({
+    required this.showAllRoundsOnTarget,
+    required this.onAllRoundsToggle,
+    required this.onRoundSelected,
+  });
+
+  final bool showAllRoundsOnTarget;
+  final ValueChanged<bool> onAllRoundsToggle;
+  final VoidCallback onRoundSelected;
+
+  @override
+  State<_RoundList> createState() => _RoundListState();
+}
+
+class _RoundListState extends State<_RoundList> {
+  bool _isSummaryExpanded = false;
 
   Future<void> _handlePhotoAction(
     BuildContext context,
@@ -670,14 +766,27 @@ class _RoundList extends StatelessWidget {
         }
 
         final cubit = context.read<ActivityDetailCubit>();
+        final rounds = state.rounds;
 
         return ListView.separated(
           padding: const EdgeInsets.all(16),
-          itemCount: state.rounds.length,
+          itemCount: rounds.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final round = state.rounds[index];
+            if (index == 0) {
+              return _AllRoundsSummaryCard(
+                rounds: rounds,
+                isExpanded: _isSummaryExpanded,
+                onToggle: () {
+                  final next = !_isSummaryExpanded;
+                  setState(() => _isSummaryExpanded = next);
+                  widget.onAllRoundsToggle(next);
+                },
+              );
+            }
+            final round = rounds[index - 1];
             final isSelected = round.id == state.selectedRoundId;
+            final roundNumber = index;
 
             return AnimatedScale(
               duration: const Duration(milliseconds: 200),
@@ -689,7 +798,12 @@ class _RoundList extends StatelessWidget {
                       ).colorScheme.primaryContainer.withValues(alpha: 0.45)
                     : null,
                 child: ListTile(
-                  onTap: () => cubit.selectRound(round.id),
+                  onTap: () {
+                    setState(() => _isSummaryExpanded = false);
+                    widget.onAllRoundsToggle(false);
+                    widget.onRoundSelected();
+                    cubit.selectRound(round.id);
+                  },
                   leading: round.photoPath != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -700,8 +814,8 @@ class _RoundList extends StatelessWidget {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : CircleAvatar(child: Text('${index + 1}')),
-                  title: Text('Round ${index + 1}'),
+                      : CircleAvatar(child: Text('$roundNumber')),
+                  title: Text('Round $roundNumber'),
                   subtitle: Text(
                     'Score: ${round.totalScore} · Arrows: ${round.arrows.length}',
                   ),
@@ -733,6 +847,231 @@ class _RoundList extends StatelessWidget {
   }
 }
 
+class _AllRoundsSummaryCard extends StatelessWidget {
+  const _AllRoundsSummaryCard({
+    required this.rounds,
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  final List<ArcheryRound> rounds;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rounds.isEmpty) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final totalRounds = rounds.length;
+    final totalScore = rounds.fold<int>(
+      0,
+      (sum, round) => sum + round.totalScore,
+    );
+    final arrowCount = rounds.fold<int>(
+      0,
+      (sum, round) => sum + round.arrows.length,
+    );
+    final tenCount = rounds.fold<int>(
+      0,
+      (sum, round) => sum + round.arrows.where((a) => a.score == 10).length,
+    );
+
+    var bestScore = 0;
+    var bestRoundIndex = 0;
+    var worstScore = rounds.first.totalScore;
+    var worstRoundIndex = 0;
+
+    for (var i = 0; i < rounds.length; i++) {
+      final roundScore = rounds[i].totalScore;
+      if (roundScore >= bestScore) {
+        bestScore = roundScore;
+        bestRoundIndex = i;
+      }
+      if (roundScore <= worstScore) {
+        worstScore = roundScore;
+        worstRoundIndex = i;
+      }
+    }
+
+    final averageRound =
+        totalRounds == 0 ? 0.0 : totalScore.toDouble() / totalRounds;
+    final averageArrow =
+        arrowCount == 0 ? 0.0 : totalScore.toDouble() / arrowCount;
+    final tenRate =
+        arrowCount == 0 ? 0.0 : (tenCount * 100.0) / arrowCount.toDouble();
+
+    return Card(
+      elevation: 1.5,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.insights_outlined),
+                  const SizedBox(width: 8),
+                  Text(
+                    'All rounds summary',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _SummaryStatChip(
+                    label: 'Total score',
+                    value: '$totalScore pts',
+                  ),
+                  _SummaryStatChip(
+                    label: 'Avg / round',
+                    value: averageRound.toStringAsFixed(1),
+                  ),
+                  _SummaryStatChip(
+                    label: 'Arrows',
+                    value: '$arrowCount',
+                  ),
+                  _SummaryStatChip(
+                    label: '10s',
+                    value: '$tenCount',
+                  ),
+                  _SummaryStatChip(
+                    label: 'Best',
+                    value: 'R${bestRoundIndex + 1} · $bestScore pts',
+                  ),
+                  _SummaryStatChip(
+                    label: 'Lowest',
+                    value: 'R${worstRoundIndex + 1} · $worstScore pts',
+                  ),
+                ],
+              ),
+              if (isExpanded) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                _DetailRow(
+                  label: 'Rounds logged',
+                  value: '$totalRounds',
+                ),
+                _DetailRow(
+                  label: 'Average / arrow',
+                  value: averageArrow.toStringAsFixed(2),
+                ),
+                _DetailRow(
+                  label: '10s hit rate',
+                  value:
+                      '${tenRate.toStringAsFixed(1)}% ($tenCount / $arrowCount)',
+                ),
+                _DetailRow(
+                  label: 'Score spread',
+                  value: '${bestScore - worstScore} pts',
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryStatChip extends StatelessWidget {
+  const _SummaryStatChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.18),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetArrow {
+  const _TargetArrow({
+    required this.arrow,
+    required this.isSelectedRound,
+  });
+
+  final ArrowHit arrow;
+  final bool isSelectedRound;
+}
+
 class ArcheryTargetPainter extends CustomPainter {
   ArcheryTargetPainter({
     required this.arrows,
@@ -740,7 +1079,7 @@ class ArcheryTargetPainter extends CustomPainter {
     required this.targetFaceType,
   });
 
-  final List<ArrowHit> arrows;
+  final List<_TargetArrow> arrows;
   final String? highlightedArrowId;
   final TargetFaceType targetFaceType;
 
@@ -770,14 +1109,19 @@ class ArcheryTargetPainter extends CustomPainter {
       canvas.drawCircle(spot.center, spot.radius, paint);
     }
 
-    for (final arrow in arrows) {
+    for (final targetArrow in arrows) {
+      final arrow = targetArrow.arrow;
       final isHighlighted = arrow.id == highlightedArrowId;
       final spotIndex = arrow.targetIndex.clamp(0, spots.length - 1);
       final spot = spots[spotIndex];
       final scale = spot.radius / ArcheryRepository.targetRadius;
       final arrowPaint = Paint()
         ..style = PaintingStyle.fill
-        ..color = isHighlighted ? Colors.orange : Colors.deepPurple;
+        ..color = isHighlighted
+            ? Colors.orange
+            : targetArrow.isSelectedRound
+                ? Colors.deepPurple
+                : Colors.deepPurple.withOpacity(0.55);
       final absolute = spot.center + arrow.position * scale;
       canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
       if (isHighlighted) {

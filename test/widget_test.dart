@@ -1,47 +1,95 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+﻿import 'dart:io';
 
-import 'dart:io';
-
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_album_codex/app/event_album_app.dart';
-import 'package:flutter_album_codex/models/event.dart';
-import 'package:flutter_album_codex/repositories/event_repository.dart';
+import 'package:flutter_album_codex/blocs/activity/activity_bloc.dart';
+import 'package:flutter_album_codex/blocs/activity/activity_state.dart';
+import 'package:flutter_album_codex/blocs/navigation/navigation_cubit.dart';
+import 'package:flutter_album_codex/blocs/settings/settings_cubit.dart';
+import 'package:flutter_album_codex/data/models/activity.dart';
+import 'package:flutter_album_codex/data/models/app_settings.dart';
+import 'package:flutter_album_codex/data/models/target_face.dart';
+import 'package:flutter_album_codex/data/repositories/activity_repository.dart';
+import 'package:flutter_album_codex/data/repositories/settings_repository.dart';
+import 'package:flutter_album_codex/data/services/storage_service.dart';
+import 'package:flutter_album_codex/ui/home/home_page.dart';
 
-void main() {
-  testWidgets('顯示活動列表標題', (WidgetTester tester) async {
-    final repository = _FakeEventRepository();
+class _FakeActivityRepository extends ActivityRepository {
+  _FakeActivityRepository(List<Activity> seed)
+    : _seed = seed,
+      super(
+        storageService: StorageService(
+          overrideRoot: Directory.systemTemp.createTempSync(),
+        ),
+      );
 
-    await tester.pumpWidget(EventAlbumApp(repository: repository));
-    await tester.pumpAndSettle();
+  final List<Activity> _seed;
 
-    expect(find.text('活動相簿'), findsOneWidget);
-  });
+  @override
+  Future<List<Activity>> loadActivities() async => _seed;
 }
 
-class _FakeEventRepository extends EventRepository {
-  @override
-  Future<void> init() async {}
+class _TestingActivityBloc extends ActivityBloc {
+  _TestingActivityBloc(ActivityRepository repository)
+    : super(repository: repository);
 
-  @override
-  Future<Event> createEvent(String name) async {
-    throw UnimplementedError();
-  }
+  void seed(ActivityState state) => emit(state);
+}
 
-  @override
-  Future<List<Event>> loadEvents() async => <Event>[];
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues(const {});
 
-  @override
-  Future<List<File>> loadEventPhotos(Event event) async => <File>[];
+  testWidgets('renders Home tab headline', (tester) async {
+    final mockActivities = [
+      Activity(
+        id: 'session-1',
+        name: 'Mock Session',
+        createdAt: DateTime(2025, 1, 1, 9, 30),
+        directoryPath: Directory.systemTemp.path,
+        photoCount: 0,
+        coverPhotoPath: null,
+        targetFaceType: TargetFaceType.fullTenRing,
+      ),
+    ];
 
-  @override
-  Future<File> savePhotoToEvent(Event event, XFile source) async {
-    throw UnimplementedError();
-  }
+    final activityBloc =
+        _TestingActivityBloc(_FakeActivityRepository(mockActivities))..seed(
+          ActivityState(
+            activities: mockActivities,
+            status: ActivityStatus.success,
+          ),
+        );
+
+    final settingsCubit = SettingsCubit(
+      repository: SettingsRepository(
+        storageService: StorageService(
+          overrideRoot: Directory.systemTemp.createTempSync(),
+        ),
+      ),
+      initialSettings: const AppSettings(
+        themeMode: ThemeMode.system,
+        defaultActivityNameFormat: 'Event {date}',
+        storagePath: '',
+      ),
+    );
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<ActivityBloc>.value(value: activityBloc),
+          BlocProvider<SettingsCubit>.value(value: settingsCubit),
+          BlocProvider(create: (_) => NavigationCubit()),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Recent sessions'), findsOneWidget);
+  });
 }

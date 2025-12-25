@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="flutter_album_codex"
+        android:label="ArrowLog"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

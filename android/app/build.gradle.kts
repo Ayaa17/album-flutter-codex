@@ -9,7 +9,7 @@ import java.util.Properties
 import java.io.FileInputStream
 
 android {
-    namespace = "com.example.flutter_album_codex"
+    namespace = "com.aya.flutter_album_codex"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "26.3.11579264"
 
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_album_codex"
+        applicationId = "com.aya.flutter_album_codex"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

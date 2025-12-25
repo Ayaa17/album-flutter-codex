@@ -17,9 +17,12 @@ class SettingsPage extends StatelessWidget {
           listener: (context, state) {
             final message = state.message;
             if (message != null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                  duration: const Duration(milliseconds: 300),
+                ),
+              );
             }
           },
           builder: (context, state) {

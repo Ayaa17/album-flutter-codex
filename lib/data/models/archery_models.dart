@@ -86,7 +86,10 @@ class ArcheryRound extends Equatable {
   }
 
   int get totalScore => arrows.fold(0, (sum, arrow) => sum + arrow.score);
-
+  double get averageScore {
+    if (arrows.isEmpty) return 0.0;
+    return totalScore / arrows.length;
+  }
   factory ArcheryRound.create() {
     return ArcheryRound(
       id: _uuid.v4(),

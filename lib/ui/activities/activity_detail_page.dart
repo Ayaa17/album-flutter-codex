@@ -67,24 +67,24 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
             ? null
             : _highlightedArrowId;
         return Scaffold(
-          // appBar: AppBar(title: Text(state.activity.name)),
+          appBar: AppBar(title: Text(state.activity.name)),
           // floatingActionButton: Column(
-            // mainAxisSize: MainAxisSize.min,
-            // crossAxisAlignment: CrossAxisAlignment.end,
-            // children: [
-              // FloatingActionButton.extended(
-              //   onPressed: () =>
-              //       context.read<ActivityDetailCubit>().addRoundWithPhoto(),
-              //   icon: const Icon(Icons.camera_alt_outlined),
-              //   label: const Text('Add Picture'),
-              // ),
-              // const SizedBox(height: 12),
-              // FloatingActionButton.extended(
-              //   onPressed: () => context.read<ActivityDetailCubit>().addRound(),
-              //   icon: const Icon(Icons.my_location_outlined),
-              //   label: const Text('Add Round'),
-              // ),
-            // ],
+          // mainAxisSize: MainAxisSize.min,
+          // crossAxisAlignment: CrossAxisAlignment.end,
+          // children: [
+          // FloatingActionButton.extended(
+          //   onPressed: () =>
+          //       context.read<ActivityDetailCubit>().addRoundWithPhoto(),
+          //   icon: const Icon(Icons.camera_alt_outlined),
+          //   label: const Text('Add Picture'),
+          // ),
+          // const SizedBox(height: 12),
+          // FloatingActionButton.extended(
+          //   onPressed: () => context.read<ActivityDetailCubit>().addRound(),
+          //   icon: const Icon(Icons.my_location_outlined),
+          //   label: const Text('Add Round'),
+          // ),
+          // ],
           // ),
           body: SafeArea(
             child: Stack(
@@ -112,25 +112,25 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                       ),
                                     )
                                   : (selectedRound != null
-                                      ? _RoundHeader(
-                                          round: selectedRound,
-                                          roundIndex:
-                                              state.rounds.indexWhere(
-                                                    (round) =>
-                                                        round.id ==
-                                                        selectedRound.id,
-                                                  ) +
-                                                  1,
-                                          highlightedArrowId: highlightId,
-                                          onArrowTap: _handleArrowTap,
-                                          onArrowLongPress: (arrow) =>
-                                              _handleArrowLongPress(
-                                                context,
-                                                selectedRound,
-                                                arrow,
-                                              ),
-                                        )
-                                      : const _NoRoundHeader());
+                                        ? _RoundHeader(
+                                            round: selectedRound,
+                                            roundIndex:
+                                                state.rounds.indexWhere(
+                                                  (round) =>
+                                                      round.id ==
+                                                      selectedRound.id,
+                                                ) +
+                                                1,
+                                            highlightedArrowId: highlightId,
+                                            onArrowTap: _handleArrowTap,
+                                            onArrowLongPress: (arrow) =>
+                                                _handleArrowLongPress(
+                                                  context,
+                                                  selectedRound,
+                                                  arrow,
+                                                ),
+                                          )
+                                        : const _NoRoundHeader());
 
                               final maxHeaderExtent = math.max(
                                 0.0,
@@ -236,9 +236,8 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                               if (value) _highlightedArrowId = null;
                             });
                           },
-                          onRoundSelected: () => setState(
-                            () => _showAllRoundsOnTarget = false,
-                          ),
+                          onRoundSelected: () =>
+                              setState(() => _showAllRoundsOnTarget = false),
                         ),
                       ),
                     ],
@@ -401,24 +400,22 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     final selectedRoundId = state.selectedRoundId;
     final arrows = showAllRounds
         ? state.rounds
-            .expand(
-              (round) => round.arrows.map(
-                (arrow) => _TargetArrow(
-                  arrow: arrow,
-                  isSelectedRound: round.id == selectedRoundId,
-                ),
-              ),
-            )
-            .toList()
-        : state.selectedRound?.arrows
-                .map(
+              .expand(
+                (round) => round.arrows.map(
                   (arrow) => _TargetArrow(
                     arrow: arrow,
-                    isSelectedRound: true,
+                    isSelectedRound: round.id == selectedRoundId,
                   ),
-                )
-                .toList() ??
-            const <_TargetArrow>[];
+                ),
+              )
+              .toList()
+        : state.selectedRound?.arrows
+                  .map(
+                    (arrow) =>
+                        _TargetArrow(arrow: arrow, isSelectedRound: true),
+                  )
+                  .toList() ??
+              const <_TargetArrow>[];
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -581,9 +578,7 @@ class _AllRoundsHeader extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           '$totalRounds rounds · $totalArrows arrows',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.black54,
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
         ),
       ],
     );
@@ -875,29 +870,32 @@ class _AllRoundsSummaryCard extends StatelessWidget {
       (sum, round) => sum + round.arrows.where((a) => a.score == 10).length,
     );
 
-    var bestScore = 0;
+    // final averageRound = totalRounds == 0
+    //     ? 0.0
+    //     : totalScore.toDouble() / totalRounds;
+    final averageArrow = arrowCount == 0
+        ? 0.0
+        : totalScore.toDouble() / arrowCount;
+    final tenRate = arrowCount == 0
+        ? 0.0
+        : (tenCount * 100.0) / arrowCount.toDouble();
+
+    var bestScore = 0.0;
     var bestRoundIndex = 0;
-    var worstScore = rounds.first.totalScore;
+    var worstScore = rounds.first.totalScore.toDouble();
     var worstRoundIndex = 0;
 
     for (var i = 0; i < rounds.length; i++) {
-      final roundScore = rounds[i].totalScore;
+      final roundScore = rounds[i].averageScore;
       if (roundScore >= bestScore) {
         bestScore = roundScore;
         bestRoundIndex = i;
       }
-      if (roundScore <= worstScore) {
+      if (roundScore <= worstScore && rounds[i].arrows.isNotEmpty) {
         worstScore = roundScore;
         worstRoundIndex = i;
       }
     }
-
-    final averageRound =
-        totalRounds == 0 ? 0.0 : totalScore.toDouble() / totalRounds;
-    final averageArrow =
-        arrowCount == 0 ? 0.0 : totalScore.toDouble() / arrowCount;
-    final tenRate =
-        arrowCount == 0 ? 0.0 : (tenCount * 100.0) / arrowCount.toDouble();
 
     return Card(
       elevation: 1.5,
@@ -933,47 +931,34 @@ class _AllRoundsSummaryCard extends StatelessWidget {
                     value: '$totalScore pts',
                   ),
                   _SummaryStatChip(
-                    label: 'Avg / round',
-                    value: averageRound.toStringAsFixed(1),
+                    label: 'Avg / arrow',
+                    value: averageArrow.toStringAsFixed(2),
                   ),
-                  _SummaryStatChip(
-                    label: 'Arrows',
-                    value: '$arrowCount',
-                  ),
-                  _SummaryStatChip(
-                    label: '10s',
-                    value: '$tenCount',
-                  ),
-                  _SummaryStatChip(
-                    label: 'Best',
-                    value: 'R${bestRoundIndex + 1} · $bestScore pts',
-                  ),
-                  _SummaryStatChip(
-                    label: 'Lowest',
-                    value: 'R${worstRoundIndex + 1} · $worstScore pts',
-                  ),
+                  _SummaryStatChip(label: 'Arrows', value: '$arrowCount'),
                 ],
               ),
               if (isExpanded) ...[
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                _DetailRow(
-                  label: 'Rounds logged',
-                  value: '$totalRounds',
-                ),
-                _DetailRow(
-                  label: 'Average / arrow',
-                  value: averageArrow.toStringAsFixed(2),
-                ),
+                _DetailRow(label: 'Rounds logged', value: '$totalRounds'),
                 _DetailRow(
                   label: '10s hit rate',
                   value:
                       '${tenRate.toStringAsFixed(1)}% ($tenCount / $arrowCount)',
                 ),
                 _DetailRow(
+                  label: 'Best round',
+                  value: 'R${bestRoundIndex + 1} / $bestScore pts',
+                ),
+                _DetailRow(
+                  label: 'Lowest round',
+                  value: 'R${worstRoundIndex + 1} / $worstScore pts',
+                ),
+                _DetailRow(
                   label: 'Score spread',
-                  value: '${bestScore - worstScore} pts',
+                  value:
+                      '${rounds[bestRoundIndex].totalScore - rounds[worstRoundIndex].totalScore} pts',
                 ),
               ],
             ],
@@ -998,9 +983,7 @@ class _SummaryStatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withOpacity(0.35),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.18),
-        ),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.18)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1061,10 +1044,7 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _TargetArrow {
-  const _TargetArrow({
-    required this.arrow,
-    required this.isSelectedRound,
-  });
+  const _TargetArrow({required this.arrow, required this.isSelectedRound});
 
   final ArrowHit arrow;
   final bool isSelectedRound;
@@ -1118,8 +1098,8 @@ class ArcheryTargetPainter extends CustomPainter {
         ..color = isHighlighted
             ? Colors.orange
             : targetArrow.isSelectedRound
-                ? Colors.deepPurple
-                : Colors.deepPurple.withOpacity(0.55);
+            ? Colors.deepPurple
+            : Colors.deepPurple.withOpacity(0.55);
       final absolute = spot.center + arrow.position * scale;
       canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
       if (isHighlighted) {

@@ -67,11 +67,11 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
             ? null
             : _highlightedArrowId;
         return Scaffold(
-          appBar: AppBar(title: Text(state.activity.name)),
-          floatingActionButton: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+          // appBar: AppBar(title: Text(state.activity.name)),
+          // floatingActionButton: Column(
+            // mainAxisSize: MainAxisSize.min,
+            // crossAxisAlignment: CrossAxisAlignment.end,
+            // children: [
               // FloatingActionButton.extended(
               //   onPressed: () =>
               //       context.read<ActivityDetailCubit>().addRoundWithPhoto(),
@@ -84,8 +84,8 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
               //   icon: const Icon(Icons.my_location_outlined),
               //   label: const Text('Add Round'),
               // ),
-            ],
-          ),
+            // ],
+          // ),
           body: SafeArea(
             child: Stack(
               children: [
@@ -93,7 +93,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                   child: Column(
                     children: [
                       Expanded(
-                        flex: 6,
+                        flex: 5,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
                           child: LayoutBuilder(
@@ -199,23 +199,21 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.end,
                                         children: [
-                                          TextButton.icon(
+                                          IconButton(
                                             onPressed: () => setState(
                                               () => _isTargetExpanded = true,
                                             ),
                                             icon: const Icon(
                                               Icons.open_in_full,
                                             ),
-                                            label: const Text('Expand target'),
                                           ),
-                                          TextButton.icon(
+                                          IconButton(
                                             onPressed: () => context
                                                 .read<ActivityDetailCubit>()
                                                 .addRound(),
                                             icon: const Icon(
                                               Icons.my_location_outlined,
                                             ),
-                                            label: const Text('Add Round'),
                                           ),
                                         ],
                                       ),
@@ -229,7 +227,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                       ),
                       const Divider(height: 1),
                       Expanded(
-                        flex: 4,
+                        flex: 5,
                         child: _RoundList(
                           showAllRoundsOnTarget: _showAllRoundsOnTarget,
                           onAllRoundsToggle: (value) {

@@ -79,17 +79,17 @@ class SettingsPage extends StatelessWidget {
                 _SectionHeader(title: '關於'),
                 Card(
                   child: Column(
-                    children: const [
+                    children: [
                       ListTile(
                         leading: Icon(Icons.info_outline),
                         title: Text('Event Album'),
-                        subtitle: Text('版本 1.0.0'),
+                        subtitle: Text('版本 ${settings.version}'),
                       ),
-                      ListTile(
-                        leading: Icon(Icons.code_outlined),
-                        title: Text('開發'),
-                        subtitle: Text('OpenAI Codex · Flutter'),
-                      ),
+                      // ListTile(
+                      //   leading: Icon(Icons.code_outlined),
+                      //   title: Text('開發'),
+                      //   subtitle: Text('OpenAI Codex · Flutter'),
+                      // ),
                     ],
                   ),
                 ),

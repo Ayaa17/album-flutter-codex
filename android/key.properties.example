@@ -1,0 +1,4 @@
+storePassword=你的keystore密碼
+keyPassword=你的key密碼
+keyAlias=my-key-alias
+storeFile=my-release-key.jks

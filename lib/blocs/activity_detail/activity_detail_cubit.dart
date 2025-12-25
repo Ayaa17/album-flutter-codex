@@ -59,7 +59,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
           status: ActivityDetailStatus.success,
           rounds: updated,
           selectedRoundId: updated.isEmpty ? null : updated.last.id,
-          message: 'Round added.',
+          // message: 'Round added.',
         ),
       );
     } catch (_) {
@@ -101,7 +101,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
           status: ActivityDetailStatus.success,
           rounds: updated,
           selectedRoundId: newRound.id,
-          message: 'Round added with photo.',
+          // message: 'Round added with photo.',
         ),
       );
     } catch (_) {
@@ -144,7 +144,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
           status: ActivityDetailStatus.success,
           rounds: updated,
           selectedRoundId: round.id,
-          message: 'Arrow added: ${addedArrow.score} pts.',
+          // message: 'Arrow added: ${addedArrow.score} pts.',
         ),
       );
     } catch (_) {

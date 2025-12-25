@@ -52,9 +52,12 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
       listener: (context, state) {
         final message = state.message;
         if (message != null && message.isNotEmpty) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(message)));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              duration: const Duration(milliseconds: 300),
+            ),
+          );
         }
       },
       builder: (context, state) {
@@ -949,11 +952,13 @@ class _AllRoundsSummaryCard extends StatelessWidget {
                 ),
                 _DetailRow(
                   label: 'Best round',
-                  value: 'R${bestRoundIndex + 1} / $bestScore pts',
+                  value:
+                      'R${bestRoundIndex + 1} / ${bestScore.toStringAsFixed(2)} pts',
                 ),
                 _DetailRow(
                   label: 'Lowest round',
-                  value: 'R${worstRoundIndex + 1} / $worstScore pts',
+                  value:
+                      'R${worstRoundIndex + 1} / ${worstScore.toStringAsFixed(2)} pts',
                 ),
                 _DetailRow(
                   label: 'Score spread',

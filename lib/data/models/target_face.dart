@@ -14,11 +14,11 @@ extension TargetFaceTypeX on TargetFaceType {
       case TargetFaceType.fullTenRing:
         return 'Full 10-ring';
       case TargetFaceType.half80cmSixRing:
-        return '80cm 6-ring (6-10 only)';
+        return '80cm 6-ring';
       case TargetFaceType.verticalTripleSixRing:
-        return '40cm vertical triple (6-10)';
+        return '40cm vertical triple';
       case TargetFaceType.triangularTripleSixRing:
-        return '40cm triangular triple (6-10)';
+        return '40cm triangular triple';
     }
   }
 

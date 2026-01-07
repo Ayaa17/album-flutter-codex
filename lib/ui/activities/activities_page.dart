@@ -25,9 +25,12 @@ class ActivitiesPage extends StatelessWidget {
           listener: (context, state) {
             final message = state.message;
             if (message != null) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                  duration: const Duration(milliseconds: 300),
+                ),
+              );
             }
           },
           builder: (context, state) {
@@ -73,14 +76,15 @@ class ActivitiesPage extends StatelessWidget {
   }
 
   Future<void> _createActivity(BuildContext context) async {
-
     final settings = context.read<SettingsCubit>().state.settings;
-    final defaultName = Utils.formatActivityName(settings.defaultActivityNameFormat);
-    final setup = await _promptActivitySetup(context, defaultName:defaultName);
+    final defaultName = Utils.formatActivityName(
+      settings.defaultActivityNameFormat,
+    );
+    final setup = await _promptActivitySetup(context, defaultName: defaultName);
     if (setup == null || !context.mounted) return;
-    context
-        .read<ActivityBloc>()
-        .add(ActivityCreated(setup.name, setup.targetFaceType));
+    context.read<ActivityBloc>().add(
+      ActivityCreated(setup.name, setup.targetFaceType),
+    );
   }
 
   void _openActivityDetail(BuildContext context, Activity activity) {
@@ -205,7 +209,10 @@ class ActivitiesPage extends StatelessWidget {
     );
   }
 
-  Future<_ActivitySetup?> _promptActivitySetup(BuildContext context, {String? defaultName}) async {
+  Future<_ActivitySetup?> _promptActivitySetup(
+    BuildContext context, {
+    String? defaultName,
+  }) async {
     final controller = TextEditingController(text: defaultName);
     TargetFaceType selected = TargetFaceType.fullTenRing;
     return showDialog<_ActivitySetup>(
@@ -224,7 +231,9 @@ class ActivitiesPage extends StatelessWidget {
                     TextField(
                       controller: controller,
                       autofocus: false,
-                      decoration: const InputDecoration(labelText: 'Activity name'),
+                      decoration: const InputDecoration(
+                        labelText: 'Activity name',
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Text(
@@ -260,12 +269,9 @@ class ActivitiesPage extends StatelessWidget {
                       Navigator.of(dialogContext).pop();
                       return;
                     }
-                    Navigator.of(dialogContext).pop(
-                      _ActivitySetup(
-                        name: name,
-                        targetFaceType: selected,
-                      ),
-                    );
+                    Navigator.of(
+                      dialogContext,
+                    ).pop(_ActivitySetup(name: name, targetFaceType: selected));
                   },
                   child: const Text('Create'),
                 ),

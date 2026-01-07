@@ -52,3 +52,17 @@ Event Album is a Flutter application for capturing, organising, and analysing ar
    ```
 
 Make sure camera and photo library permissions are declared in `AndroidManifest.xml` and `Info.plist` before distributing the app.
+
+## Build release
+
+- put jks in to `android\app\album-flutter-codex.jks`
+- set `android\key.properties` like below:
+
+  ```sh
+  storePassword=你的keystore密碼
+  keyPassword=你的key密碼
+  keyAlias=my-key-alias
+  storeFile=my-release-key.jks
+  ```
+
+- run `flutter build appbundle --release`

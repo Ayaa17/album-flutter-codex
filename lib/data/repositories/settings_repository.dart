@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/app_settings.dart';
 import '../services/storage_service.dart';
@@ -21,11 +22,15 @@ class SettingsRepository {
     final themeMode =
         ThemeMode.values[themeIndex.clamp(0, ThemeMode.values.length - 1)];
 
+    final info = await PackageInfo.fromPlatform();
+    final version = info.version; // e.g. "1.0.0"
+
     return AppSettings(
       themeMode: themeMode,
       defaultActivityNameFormat:
           prefs.getString(_defaultNameKey) ?? 'Event {date}',
       storagePath: prefs.getString(_storagePathKey) ?? storageDir.path,
+      version: version,
     );
   }
 

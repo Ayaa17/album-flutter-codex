@@ -39,9 +39,12 @@ class _HomePageState extends State<HomePage> {
           listener: (context, state) {
             final message = state.message;
             if (message != null && message.isNotEmpty) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(message)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                  duration: const Duration(milliseconds: 300),
+                ),
+              );
             }
           },
           builder: (context, state) {
@@ -209,7 +212,10 @@ class _HomePageState extends State<HomePage> {
     if (activities.isEmpty) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No activities available yet.')),
+        const SnackBar(
+          content: Text('No activities available yet.'),
+          duration: Duration(milliseconds: 300),
+        ),
       );
       return;
     }
@@ -334,6 +340,7 @@ class _HomePageState extends State<HomePage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Refresh timed out. Please try again.'),
+                  duration: Duration(milliseconds: 300),
                 ),
               );
             }

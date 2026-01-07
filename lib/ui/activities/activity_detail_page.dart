@@ -703,6 +703,7 @@ class _RoundListState extends State<_RoundList> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Photo not found. Please capture a new one.'),
+          duration: const Duration(milliseconds: 300),
         ),
       );
       await cubit.attachPhoto(round.id);

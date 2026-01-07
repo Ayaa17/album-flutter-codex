@@ -1,4 +1,4 @@
-package com.example.flutter_album_codex
+package com.aya.flutter_album_codex
 
 import io.flutter.embedding.android.FlutterActivity
 

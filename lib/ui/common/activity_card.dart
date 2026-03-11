@@ -193,7 +193,8 @@ class _ActivityStatsRow extends StatelessWidget {
       0,
       (sum, round) => sum + round.totalScore,
     );
-    final average = rounds.isEmpty ? 0.0 : totalScore / rounds.length;
+    final average =
+        totalArrows == 0 ? 0.0 : totalScore / totalArrows.toDouble();
     return _ActivityQuickStats(totalArrows: totalArrows, averageScore: average);
   }
 

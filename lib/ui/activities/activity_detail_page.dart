@@ -266,12 +266,9 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                             Center(
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
-                                  final size = math.min(
-                                    constraints.maxWidth - 24,
-                                    constraints.maxHeight - 24,
-                                  );
-                                  final targetSize = Size.square(
-                                    math.max(size, 0),
+                                  final targetSize = _expandedTargetSize(
+                                    state.activity.targetFaceType,
+                                    constraints,
                                   );
                                   return _buildTargetCanvas(
                                     targetSize,
@@ -456,6 +453,34 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         ),
       ),
     );
+  }
+
+  Size _expandedTargetSize(
+    TargetFaceType type,
+    BoxConstraints constraints,
+  ) {
+    const double padding = 24.0;
+    final maxWidth = math.max(0.0, constraints.maxWidth - padding);
+    final maxHeight = math.max(0.0, constraints.maxHeight - padding);
+
+    if (type == TargetFaceType.verticalTripleSixRing) {
+      final width = math.min(maxWidth, maxHeight / 3);
+      final height = width * 3;
+      return Size(width, height);
+    }
+
+    if (type == TargetFaceType.triangularTripleSixRing) {
+      const double widthFactor = 4.56;
+      const double heightFactor = 4.2;
+      final radius = math.min(
+        maxWidth / widthFactor,
+        maxHeight / heightFactor,
+      );
+      return Size(radius * widthFactor, radius * heightFactor);
+    }
+
+    final size = math.min(maxWidth, maxHeight);
+    return Size.square(size);
   }
 }
 

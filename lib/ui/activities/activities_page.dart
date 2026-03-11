@@ -12,8 +12,15 @@ import '../common/activity_card.dart';
 import 'activity_detail_page.dart';
 import '../../utils.dart';
 
-class ActivitiesPage extends StatelessWidget {
+class ActivitiesPage extends StatefulWidget {
   const ActivitiesPage({super.key});
+
+  @override
+  State<ActivitiesPage> createState() => _ActivitiesPageState();
+}
+
+class _ActivitiesPageState extends State<ActivitiesPage> {
+  String? _lastOpenedActivityId;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +28,8 @@ class ActivitiesPage extends StatelessWidget {
       body: SafeArea(
         child: BlocConsumer<ActivityBloc, ActivityState>(
           listenWhen: (previous, current) =>
-              previous.message != current.message,
+              previous.message != current.message ||
+              previous.lastCreatedActivityId != current.lastCreatedActivityId,
           listener: (context, state) {
             final message = state.message;
             if (message != null) {
@@ -31,6 +39,18 @@ class ActivitiesPage extends StatelessWidget {
                   duration: const Duration(milliseconds: 300),
                 ),
               );
+            }
+
+            final createdId = state.lastCreatedActivityId;
+            if (createdId != null && createdId != _lastOpenedActivityId) {
+              final created = state.activities.cast<Activity?>().firstWhere(
+                (activity) => activity?.id == createdId,
+                orElse: () => null,
+              );
+              if (created != null) {
+                _lastOpenedActivityId = createdId;
+                _openActivityDetail(context, created);
+              }
             }
           },
           builder: (context, state) {

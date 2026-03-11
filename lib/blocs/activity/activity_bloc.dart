@@ -23,6 +23,7 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityStarted event,
     Emitter<ActivityState> emit,
   ) async {
+    emit(state.copyWith(lastCreatedActivityId: null));
     await _loadActivities(emit, loading: true);
   }
 
@@ -30,6 +31,7 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityRefreshed event,
     Emitter<ActivityState> emit,
   ) async {
+    emit(state.copyWith(lastCreatedActivityId: null));
     await _loadActivities(
       emit,
       // loading: state.status == ActivityStatus.initial,
@@ -41,19 +43,31 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityCreated event,
     Emitter<ActivityState> emit,
   ) async {
-    emit(state.copyWith(status: ActivityStatus.loading, message: null));
+    emit(
+      state.copyWith(
+        status: ActivityStatus.loading,
+        message: null,
+        lastCreatedActivityId: null,
+      ),
+    );
     try {
-      await _repository.createActivity(
+      final created = await _repository.createActivity(
         event.name,
         targetFaceType: event.targetFaceType,
       );
       await _loadActivities(emit);
-      emit(state.copyWith(message: 'Activity created.'));
+      emit(
+        state.copyWith(
+          message: 'Activity created.',
+          lastCreatedActivityId: created.id,
+        ),
+      );
     } catch (_) {
       emit(
         state.copyWith(
           status: ActivityStatus.failure,
           message: 'Failed to create activity.',
+          lastCreatedActivityId: null,
         ),
       );
     }
@@ -63,7 +77,13 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityQuickCaptured event,
     Emitter<ActivityState> emit,
   ) async {
-    emit(state.copyWith(status: ActivityStatus.loading, message: null));
+    emit(
+      state.copyWith(
+        status: ActivityStatus.loading,
+        message: null,
+        lastCreatedActivityId: null,
+      ),
+    );
     try {
       await _repository.quickCapture(
         defaultName: event.defaultName,
@@ -85,7 +105,13 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityRenamed event,
     Emitter<ActivityState> emit,
   ) async {
-    emit(state.copyWith(status: ActivityStatus.loading, message: null));
+    emit(
+      state.copyWith(
+        status: ActivityStatus.loading,
+        message: null,
+        lastCreatedActivityId: null,
+      ),
+    );
     try {
       await _repository.renameActivity(id: event.id, newName: event.newName);
       await _loadActivities(emit);
@@ -104,7 +130,13 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityDeleted event,
     Emitter<ActivityState> emit,
   ) async {
-    emit(state.copyWith(status: ActivityStatus.loading, message: null));
+    emit(
+      state.copyWith(
+        status: ActivityStatus.loading,
+        message: null,
+        lastCreatedActivityId: null,
+      ),
+    );
     try {
       await _repository.deleteActivity(event.id);
       await _loadActivities(emit);
@@ -123,7 +155,13 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
     ActivityPhotoAdded event,
     Emitter<ActivityState> emit,
   ) async {
-    emit(state.copyWith(status: ActivityStatus.loading, message: null));
+    emit(
+      state.copyWith(
+        status: ActivityStatus.loading,
+        message: null,
+        lastCreatedActivityId: null,
+      ),
+    );
     try {
       await _repository.addPhotoToActivity(event.id, event.source);
       await _loadActivities(emit);

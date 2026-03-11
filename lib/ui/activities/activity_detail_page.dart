@@ -354,6 +354,10 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     });
   }
 
+  String _formatArrowScore(ArrowHit arrow) {
+    return arrow.isX ? 'X (10)' : '${arrow.score}';
+  }
+
   Future<void> _handleArrowLongPress(
     BuildContext context,
     ArcheryRound round,
@@ -365,7 +369,9 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
           builder: (dialogContext) {
             return AlertDialog(
               title: const Text('Delete arrow?'),
-              content: Text('Remove the arrow scored ${arrow.score} pts?'),
+              content: Text(
+                'Remove the arrow scored ${_formatArrowScore(arrow)} pts?',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -528,7 +534,12 @@ class _RoundHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sortedArrows = [...round.arrows]
-      ..sort((a, b) => b.score.compareTo(a.score));
+      ..sort((a, b) {
+        final byScore = b.score.compareTo(a.score);
+        if (byScore != 0) return byScore;
+        if (a.isX == b.isX) return 0;
+        return a.isX ? -1 : 1;
+      });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -561,6 +572,7 @@ class _RoundHeader extends StatelessWidget {
                       width: pillWidth,
                       child: _ArrowScorePill(
                         score: sortedArrows[i].score,
+                        isX: sortedArrows[i].isX,
                         isHighlighted: highlightedArrowId == sortedArrows[i].id,
                         onTap: () => onArrowTap(sortedArrows[i]),
                         onLongPress: () => onArrowLongPress(sortedArrows[i]),
@@ -616,12 +628,14 @@ class _AllRoundsHeader extends StatelessWidget {
 class _ArrowScorePill extends StatelessWidget {
   const _ArrowScorePill({
     required this.score,
+    required this.isX,
     this.isHighlighted = false,
     this.onTap,
     this.onLongPress,
   });
 
   final int score;
+  final bool isX;
   final bool isHighlighted;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -672,7 +686,7 @@ class _ArrowScorePill extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Center(
               child: Text(
-                '$score',
+                isX ? 'X' : '$score',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
@@ -894,10 +908,17 @@ class _AllRoundsSummaryCard extends StatelessWidget {
       0,
       (sum, round) => sum + round.arrows.length,
     );
+    final xCount = rounds.fold<int>(
+      0,
+      (sum, round) => sum + round.arrows.where((a) => a.isX).length,
+    );
     final tenCount = rounds.fold<int>(
       0,
-      (sum, round) => sum + round.arrows.where((a) => a.score == 10).length,
+      (sum, round) =>
+          sum +
+          round.arrows.where((a) => a.score == 10 && !a.isX).length,
     );
+    final totalTenCount = xCount + tenCount;
 
     // final averageRound = totalRounds == 0
     //     ? 0.0
@@ -959,6 +980,8 @@ class _AllRoundsSummaryCard extends StatelessWidget {
                     label: 'Total score',
                     value: '$totalScore pts',
                   ),
+                  _SummaryStatChip(label: 'X hits', value: '$xCount'),
+                  _SummaryStatChip(label: 'X+10', value: '$totalTenCount'),
                   _SummaryStatChip(
                     label: 'Avg / arrow',
                     value: averageArrow.toStringAsFixed(2),
@@ -976,6 +999,8 @@ class _AllRoundsSummaryCard extends StatelessWidget {
                   value:
                       '${tenRate.toStringAsFixed(1)}% ($tenCount / $arrowCount)',
                 ),
+                _DetailRow(label: 'X hits', value: '$xCount'),
+                _DetailRow(label: 'X+10', value: '$totalTenCount'),
                 _DetailRow(
                   label: 'Best round',
                   value:
@@ -1116,6 +1141,15 @@ class ArcheryTargetPainter extends CustomPainter {
         ..strokeWidth = 1.5
         ..style = PaintingStyle.stroke;
       canvas.drawCircle(spot.center, spot.radius, paint);
+
+      final xRatio = _xRingRatio(targetFaceType);
+      if (xRatio != null) {
+        paint
+          ..color = Colors.black45
+          ..strokeWidth = 1.0
+          ..style = PaintingStyle.stroke;
+        canvas.drawCircle(spot.center, spot.radius * xRatio, paint);
+      }
     }
 
     for (final targetArrow in arrows) {
@@ -1142,7 +1176,7 @@ class ArcheryTargetPainter extends CustomPainter {
       }
       final textPainter = TextPainter(
         text: TextSpan(
-          text: '${arrow.score}',
+          text: arrow.isX ? 'X' : '${arrow.score}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 10,
@@ -1204,6 +1238,17 @@ class ArcheryTargetPainter extends CustomPainter {
           Colors.white,
           Colors.white,
         ];
+    }
+  }
+
+  double? _xRingRatio(TargetFaceType type) {
+    switch (type) {
+      case TargetFaceType.fullTenRing:
+        return 0.05;
+      case TargetFaceType.half80cmSixRing:
+      case TargetFaceType.verticalTripleSixRing:
+      case TargetFaceType.triangularTripleSixRing:
+        return 0.10;
     }
   }
 }

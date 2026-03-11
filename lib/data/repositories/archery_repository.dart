@@ -173,14 +173,15 @@ class ArcheryRepository {
     if (renderRadius <= 0) return rounds;
 
     final ratio = relative.distance / renderRadius;
-    final score = _scoreFromRatio(ratio, targetFaceType);
+    final result = _scoreFromRatio(ratio, targetFaceType);
     final scale = targetRadius / renderRadius;
     final storedOffset = relative * scale;
 
     final newArrow = ArrowHit(
       id: _uuid.v4(),
       position: storedOffset,
-      score: score,
+      score: result.score,
+      isX: result.isX,
       createdAt: DateTime.now(),
       targetIndex: nearestIndex,
     );
@@ -223,7 +224,8 @@ class ArcheryRepository {
       if (round.id != roundId) return round;
       final updatedArrows = round.arrows.map((arrow) {
         if (arrow.id != arrowId) return arrow;
-        return arrow.createCopy(score: clampedScore);
+        final updatedIsX = clampedScore == 10 && arrow.isX;
+        return arrow.createCopy(score: clampedScore, isX: updatedIsX);
       }).toList();
       return round.copyWith(arrows: updatedArrows);
     }).toList();
@@ -231,35 +233,38 @@ class ArcheryRepository {
     return updated;
   }
 
-  int _scoreFromRatio(double ratio, TargetFaceType targetFaceType) {
+  _ScoreResult _scoreFromRatio(double ratio, TargetFaceType targetFaceType) {
     switch (targetFaceType) {
       case TargetFaceType.half80cmSixRing:
-        if (ratio <= 0.20) return 10;
-        if (ratio <= 0.40) return 9;
-        if (ratio <= 0.60) return 8;
-        if (ratio <= 0.80) return 7;
-        if (ratio <= 1.00) return 6;
-        return 0;
+        if (ratio <= 0.10) return const _ScoreResult(score: 10, isX: true);
+        if (ratio <= 0.20) return const _ScoreResult(score: 10);
+        if (ratio <= 0.40) return const _ScoreResult(score: 9);
+        if (ratio <= 0.60) return const _ScoreResult(score: 8);
+        if (ratio <= 0.80) return const _ScoreResult(score: 7);
+        if (ratio <= 1.00) return const _ScoreResult(score: 6);
+        return const _ScoreResult(score: 0);
       case TargetFaceType.verticalTripleSixRing:
       case TargetFaceType.triangularTripleSixRing:
-        if (ratio <= 0.20) return 10;
-        if (ratio <= 0.40) return 9;
-        if (ratio <= 0.60) return 8;
-        if (ratio <= 0.80) return 7;
-        if (ratio <= 1.00) return 6;
-        return 0;
+        if (ratio <= 0.10) return const _ScoreResult(score: 10, isX: true);
+        if (ratio <= 0.20) return const _ScoreResult(score: 10);
+        if (ratio <= 0.40) return const _ScoreResult(score: 9);
+        if (ratio <= 0.60) return const _ScoreResult(score: 8);
+        if (ratio <= 0.80) return const _ScoreResult(score: 7);
+        if (ratio <= 1.00) return const _ScoreResult(score: 6);
+        return const _ScoreResult(score: 0);
       case TargetFaceType.fullTenRing:
-        if (ratio <= 0.10) return 10;
-        if (ratio <= 0.20) return 9;
-        if (ratio <= 0.30) return 8;
-        if (ratio <= 0.40) return 7;
-        if (ratio <= 0.50) return 6;
-        if (ratio <= 0.60) return 5;
-        if (ratio <= 0.70) return 4;
-        if (ratio <= 0.80) return 3;
-        if (ratio <= 0.90) return 2;
-        if (ratio <= 1.00) return 1;
-        return 0;
+        if (ratio <= 0.05) return const _ScoreResult(score: 10, isX: true);
+        if (ratio <= 0.10) return const _ScoreResult(score: 10);
+        if (ratio <= 0.20) return const _ScoreResult(score: 9);
+        if (ratio <= 0.30) return const _ScoreResult(score: 8);
+        if (ratio <= 0.40) return const _ScoreResult(score: 7);
+        if (ratio <= 0.50) return const _ScoreResult(score: 6);
+        if (ratio <= 0.60) return const _ScoreResult(score: 5);
+        if (ratio <= 0.70) return const _ScoreResult(score: 4);
+        if (ratio <= 0.80) return const _ScoreResult(score: 3);
+        if (ratio <= 0.90) return const _ScoreResult(score: 2);
+        if (ratio <= 1.00) return const _ScoreResult(score: 1);
+        return const _ScoreResult(score: 0);
     }
   }
 
@@ -280,4 +285,11 @@ class ArcheryRepository {
     }
     return bestIndex;
   }
+}
+
+class _ScoreResult {
+  const _ScoreResult({required this.score, this.isX = false});
+
+  final int score;
+  final bool isX;
 }

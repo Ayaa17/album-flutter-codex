@@ -11,15 +11,22 @@ class ArrowHit extends Equatable {
     required this.id,
     required this.position,
     required this.score,
+    this.isX = false,
     required this.createdAt,
     required this.targetIndex,
   });
 
-  ArrowHit createCopy({Offset? position, int? score, int? targetIndex}) {
+  ArrowHit createCopy({
+    Offset? position,
+    int? score,
+    bool? isX,
+    int? targetIndex,
+  }) {
     return ArrowHit(
       id: id,
       position: position ?? this.position,
       score: score ?? this.score,
+      isX: isX ?? this.isX,
       createdAt: createdAt,
       targetIndex: targetIndex ?? this.targetIndex,
     );
@@ -33,6 +40,7 @@ class ArrowHit extends Equatable {
         (map['dy'] as num?)?.toDouble() ?? 0,
       ),
       score: map['score'] as int? ?? 0,
+      isX: map['isX'] as bool? ?? false,
       targetIndex: map['targetIndex'] as int? ?? 0,
       createdAt:
           DateTime.tryParse(map['createdAt'] as String? ?? '') ??
@@ -46,6 +54,7 @@ class ArrowHit extends Equatable {
       'dx': position.dx,
       'dy': position.dy,
       'score': score,
+      'isX': isX,
       'targetIndex': targetIndex,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -54,6 +63,7 @@ class ArrowHit extends Equatable {
   final String id;
   final Offset position;
   final int score;
+  final bool isX;
   final DateTime createdAt;
   final int targetIndex;
 
@@ -63,6 +73,7 @@ class ArrowHit extends Equatable {
     position.dx,
     position.dy,
     score,
+    isX,
     createdAt,
     targetIndex,
   ];

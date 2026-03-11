@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -21,6 +22,7 @@ class ArcheryRepository {
   final Uuid _uuid = const Uuid();
 
   static const double targetRadius = 150.0;
+  static const double arrowRenderRadius = 6.0;
   static const String _roundsFileName = 'rounds.json';
 
   Future<List<ArcheryRound>> loadRounds(String activityId) async {
@@ -172,7 +174,11 @@ class ArcheryRepository {
     final renderRadius = spot.radius;
     if (renderRadius <= 0) return rounds;
 
-    final ratio = relative.distance / renderRadius;
+    final adjustedDistance = math.max(
+      0.0,
+      relative.distance - arrowRenderRadius,
+    );
+    final ratio = adjustedDistance / renderRadius;
     final result = _scoreFromRatio(ratio, targetFaceType);
     final scale = targetRadius / renderRadius;
     final storedOffset = relative * scale;

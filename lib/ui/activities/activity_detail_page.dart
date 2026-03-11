@@ -43,7 +43,13 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
   Offset? _pendingArrowPosition;
   String? _highlightedArrowId;
   bool _isTargetExpanded = false;
-  bool _showAllRoundsOnTarget = false;
+  bool _showAllRoundsOnTarget = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _showAllRoundsOnTarget = true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -725,6 +731,20 @@ class _RoundList extends StatefulWidget {
 
 class _RoundListState extends State<_RoundList> {
   bool _isSummaryExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSummaryExpanded = widget.showAllRoundsOnTarget;
+  }
+
+  @override
+  void didUpdateWidget(covariant _RoundList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showAllRoundsOnTarget != widget.showAllRoundsOnTarget) {
+      _isSummaryExpanded = widget.showAllRoundsOnTarget;
+    }
+  }
 
   Future<void> _handlePhotoAction(
     BuildContext context,

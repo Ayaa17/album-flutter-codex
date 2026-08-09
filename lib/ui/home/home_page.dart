@@ -366,6 +366,14 @@ class _StatsSectionState extends State<_StatsSection> {
               ),
             ),
             const SizedBox(height: 12),
+            if (stats != null) ...[
+              _DashboardOverview(stats: stats),
+              const SizedBox(height: 12),
+              _ScoreDistributionCard(entries: stats.scoreDistribution),
+              const SizedBox(height: 12),
+              _TrendCard(points: stats.recentTrend),
+              const SizedBox(height: 16),
+            ],
             LayoutBuilder(
               builder: (context, constraints) {
                 const double targetWidth = 320;
@@ -446,6 +454,453 @@ class _StatsSectionState extends State<_StatsSection> {
       ActivityStatsSnapshotKind.monthly => Icons.calendar_today_outlined,
       ActivityStatsSnapshotKind.overall => Icons.all_inclusive,
     };
+  }
+}
+
+class _DashboardOverview extends StatelessWidget {
+  const _DashboardOverview({required this.stats});
+
+  final ActivityStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        final isWide = constraints.maxWidth >= 720;
+        final children = [
+          _HeroMetricCard(
+            icon: Icons.emoji_events_outlined,
+            label: 'Best round',
+            value: '${stats.bestRoundScore}',
+            suffix: 'pts',
+          ),
+          _HeroMetricCard(
+            icon: Icons.speed_outlined,
+            label: 'Avg / arrow',
+            value: stats.averageArrowScore.toStringAsFixed(1),
+            suffix: 'pts',
+          ),
+          _HeroMetricCard(
+            icon: Icons.center_focus_strong_outlined,
+            label: 'X+10 rate',
+            value: '${stats.xTenRate.toStringAsFixed(0)}%',
+            suffix: 'hits',
+          ),
+        ];
+
+        if (!isWide) {
+          return Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(height: spacing),
+                children[i],
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(width: spacing),
+              Expanded(child: children[i]),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HeroMetricCard extends StatelessWidget {
+  const _HeroMetricCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.suffix,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: colorScheme.primary, size: 30),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.68),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(suffix, style: theme.textTheme.labelMedium),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreDistributionCard extends StatelessWidget {
+  const _ScoreDistributionCard({required this.entries});
+
+  final List<ScoreDistributionEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final maxCount = entries.fold<int>(
+      0,
+      (maxValue, entry) => math.max(maxValue, entry.count),
+    );
+    final totalArrows = entries.fold<int>(0, (sum, entry) => sum + entry.count);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.bar_chart_outlined),
+              const SizedBox(width: 8),
+              Text(
+                'Arrows by score',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$totalArrows arrows',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.62),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Count of every recorded arrow grouped by final score.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.62),
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (final entry in entries) ...[
+            _DistributionBar(entry: entry, maxCount: maxCount),
+            if (entry != entries.last) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DistributionBar extends StatelessWidget {
+  const _DistributionBar({required this.entry, required this.maxCount});
+
+  final ScoreDistributionEntry entry;
+  final int maxCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final ratio = maxCount == 0 ? 0.0 : entry.count / maxCount;
+    return Row(
+      children: [
+        SizedBox(
+          width: 36,
+          child: Text(
+            entry.label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: ratio,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 56,
+          child: Text(
+            '${entry.count} arrows',
+            textAlign: TextAlign.right,
+            style: theme.textTheme.labelSmall,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrendCard extends StatelessWidget {
+  const _TrendCard({required this.points});
+
+  final List<ActivityTrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final values = points.map((point) => point.averageArrowScore).toList();
+    final minValue = values.isEmpty ? 0.0 : values.reduce(math.min);
+    final maxValue = values.isEmpty ? 0.0 : values.reduce(math.max);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.show_chart_outlined),
+              const SizedBox(width: 8),
+              Text(
+                'Avg arrow score trend',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${points.length} sessions',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.62),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Average points per arrow by session, oldest to latest.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.62),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 164,
+            child: points.length < 2
+                ? Center(
+                    child: Text(
+                      'Add more scored sessions to show a trend.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.62),
+                      ),
+                    ),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: 42,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              maxValue.toStringAsFixed(1),
+                              style: theme.textTheme.labelSmall,
+                            ),
+                            Text(
+                              'avg pts',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: 0.56,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              minValue.toStringAsFixed(1),
+                              style: theme.textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: CustomPaint(
+                                painter: _TrendPainter(
+                                  points: points,
+                                  lineColor: colorScheme.primary,
+                                  fillColor: colorScheme.primary.withValues(
+                                    alpha: 0.10,
+                                  ),
+                                  gridColor: colorScheme.outlineVariant,
+                                ),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text(
+                                  'Oldest',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.58,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'Latest',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.58,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrendPainter extends CustomPainter {
+  const _TrendPainter({
+    required this.points,
+    required this.lineColor,
+    required this.fillColor,
+    required this.gridColor,
+  });
+
+  final List<ActivityTrendPoint> points;
+  final Color lineColor;
+  final Color fillColor;
+  final Color gridColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+    final values = points.map((point) => point.averageArrowScore).toList();
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    final range = math.max(1.0, maxValue - minValue);
+    final chartRect = Rect.fromLTWH(2, 8, size.width - 4, size.height - 18);
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+    for (final fraction in [0.0, 0.5, 1.0]) {
+      final y = chartRect.top + chartRect.height * fraction;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = chartRect.left + chartRect.width * (i / (values.length - 1));
+      final y =
+          chartRect.bottom -
+          ((values[i] - minValue) / range) * chartRect.height;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    final fillPath = Path.from(path)
+      ..lineTo(chartRect.right, chartRect.bottom)
+      ..lineTo(chartRect.left, chartRect.bottom)
+      ..close();
+    canvas.drawPath(fillPath, Paint()..color = fillColor);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = lineColor
+        ..strokeWidth = 3
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    final dotPaint = Paint()..color = lineColor;
+    for (var i = 0; i < values.length; i++) {
+      final x = chartRect.left + chartRect.width * (i / (values.length - 1));
+      final y =
+          chartRect.bottom -
+          ((values[i] - minValue) / range) * chartRect.height;
+      canvas.drawCircle(Offset(x, y), 4, dotPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendPainter oldDelegate) {
+    return oldDelegate.points != points ||
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.fillColor != fillColor ||
+        oldDelegate.gridColor != gridColor;
   }
 }
 

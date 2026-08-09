@@ -60,6 +60,17 @@ void main() {
     expect(stats.overall.arrows, 8);
     expect(stats.overall.bestRoundScore, 27);
     expect(stats.overall.averageRoundScore, 18.666666666666668);
+    expect(stats.bestRoundScore, 27);
+    expect(stats.averageArrowScore, 7);
+    expect(stats.xTenRate, 12.5);
+    expect(
+      stats.scoreDistribution.map((entry) => '${entry.label}:${entry.count}'),
+      ['X:0', '10:1', '9:1', '8:1', '7:2', '6:1', 'Miss:0'],
+    );
+    expect(stats.recentTrend.map((point) => point.averageArrowScore), [
+      5.0,
+      8.2,
+    ]);
   });
 }
 

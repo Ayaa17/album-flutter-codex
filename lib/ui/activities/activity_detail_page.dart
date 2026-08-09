@@ -219,9 +219,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                             ),
                                           ),
                                           IconButton(
-                                            onPressed: () => context
-                                                .read<ActivityDetailCubit>()
-                                                .addRound(),
+                                            onPressed: _addRoundAndFocus,
                                             icon: const Icon(
                                               Icons.my_location_outlined,
                                             ),
@@ -302,9 +300,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                               right: 16,
                               bottom: 16,
                               child: FloatingActionButton.extended(
-                                onPressed: () => context
-                                    .read<ActivityDetailCubit>()
-                                    .addRound(),
+                                onPressed: _addRoundAndFocus,
                                 icon: const Icon(Icons.my_location_outlined),
                                 label: const Text('Add Round'),
                               ),
@@ -320,6 +316,15 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         );
       },
     );
+  }
+
+  Future<void> _addRoundAndFocus() async {
+    await context.read<ActivityDetailCubit>().addRound();
+    if (!mounted) return;
+    setState(() {
+      _showAllRoundsOnTarget = false;
+      _highlightedArrowId = null;
+    });
   }
 
   void _updateCrosshair(

@@ -87,15 +87,15 @@ extension TargetFaceTypeX on TargetFaceType {
           ),
         ];
       case TargetFaceType.triangularTripleSixRing:
-        const widthFactor = 4.56;
-        const heightFactor = 4.2;
+        const widthFactor = 4.24;
+        const heightFactor = 3.72;
         final radius = math.min(
           size.width / widthFactor,
           size.height / heightFactor,
         );
         final top = Offset(size.width / 2, radius);
         final bottomY = size.height - radius;
-        final xOffset = radius * 1.28;
+        final xOffset = radius * 1.12;
         return [
           TargetSpot(center: top, radius: radius),
           TargetSpot(

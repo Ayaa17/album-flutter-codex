@@ -719,7 +719,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
   }
 
   Size _expandedTargetSize(TargetFaceType type, BoxConstraints constraints) {
-    const double padding = 24.0;
+    final padding = type == TargetFaceType.triangularTripleSixRing ? 8.0 : 24.0;
     final maxWidth = math.max(0.0, constraints.maxWidth - padding);
     final maxHeight = math.max(0.0, constraints.maxHeight - padding);
 
@@ -730,8 +730,8 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     }
 
     if (type == TargetFaceType.triangularTripleSixRing) {
-      const double widthFactor = 4.56;
-      const double heightFactor = 4.2;
+      const double widthFactor = 4.24;
+      const double heightFactor = 3.72;
       final radius = math.min(maxWidth / widthFactor, maxHeight / heightFactor);
       return Size(radius * widthFactor, radius * heightFactor);
     }

@@ -39,6 +39,8 @@ class _ActivityDetailView extends StatefulWidget {
 }
 
 class _ActivityDetailViewState extends State<_ActivityDetailView> {
+  static const Offset _fingerPlacementOffset = Offset(0, -44);
+
   Offset? _crosshairPosition;
   Offset? _pendingArrowPosition;
   String? _highlightedArrowId;
@@ -320,8 +322,15 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     );
   }
 
-  void _updateCrosshair(Offset rawPosition, Size targetSize) {
-    final position = _clampToTarget(rawPosition, targetSize);
+  void _updateCrosshair(
+    Offset rawPosition,
+    Size targetSize, {
+    bool offsetFromFinger = false,
+  }) {
+    final placementPosition = offsetFromFinger
+        ? rawPosition + _fingerPlacementOffset
+        : rawPosition;
+    final position = _clampToTarget(placementPosition, targetSize);
     setState(() {
       _crosshairPosition = position;
       _pendingArrowPosition = position;
@@ -438,10 +447,16 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         _commitArrow(cubit, targetSize);
       },
       onTapCancel: _hideCrosshair,
-      onPanStart: (details) =>
-          _updateCrosshair(details.localPosition, targetSize),
-      onPanUpdate: (details) =>
-          _updateCrosshair(details.localPosition, targetSize),
+      onPanStart: (details) => _updateCrosshair(
+        details.localPosition,
+        targetSize,
+        offsetFromFinger: true,
+      ),
+      onPanUpdate: (details) => _updateCrosshair(
+        details.localPosition,
+        targetSize,
+        offsetFromFinger: true,
+      ),
       onPanEnd: (_) => _commitArrow(cubit, targetSize),
       onPanCancel: _hideCrosshair,
       child: SizedBox(

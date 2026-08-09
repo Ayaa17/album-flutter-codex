@@ -23,6 +23,7 @@ class ArcheryRepository {
 
   static const double targetRadius = 150.0;
   static const double arrowRenderRadius = 6.0;
+  static const double lineCutterTolerance = 1.0;
   static const String _roundsFileName = 'rounds.json';
 
   Future<List<ArcheryRound>> loadRounds(String activityId) async {
@@ -174,12 +175,11 @@ class ArcheryRepository {
     final renderRadius = spot.radius;
     if (renderRadius <= 0) return rounds;
 
-    final adjustedDistance = math.max(
-      0.0,
-      relative.distance - arrowRenderRadius,
+    final result = _scoreFromDistance(
+      centerDistance: relative.distance,
+      renderRadius: renderRadius,
+      targetFaceType: targetFaceType,
     );
-    final ratio = adjustedDistance / renderRadius;
-    final result = _scoreFromRatio(ratio, targetFaceType);
     final scale = targetRadius / renderRadius;
     final storedOffset = relative * scale;
 
@@ -237,6 +237,19 @@ class ArcheryRepository {
     }).toList();
     await saveRounds(activityId, updated);
     return updated;
+  }
+
+  _ScoreResult _scoreFromDistance({
+    required double centerDistance,
+    required double renderRadius,
+    required TargetFaceType targetFaceType,
+  }) {
+    if (renderRadius <= 0) return const _ScoreResult(score: 0);
+    final innerEdgeDistance = math.max(
+      0.0,
+      centerDistance - arrowRenderRadius - lineCutterTolerance,
+    );
+    return _scoreFromRatio(innerEdgeDistance / renderRadius, targetFaceType);
   }
 
   _ScoreResult _scoreFromRatio(double ratio, TargetFaceType targetFaceType) {

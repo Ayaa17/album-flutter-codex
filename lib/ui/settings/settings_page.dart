@@ -30,35 +30,35 @@ class SettingsPage extends StatelessWidget {
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               children: [
-                _SectionHeader(title: '外觀'),
+                _SectionHeader(title: 'Appearance'),
                 Card(
-                  child: Column(
-                    children: ThemeMode.values
-                        .map(
-                          (mode) => RadioListTile<ThemeMode>(
-                            value: mode,
-                            groupValue: settings.themeMode,
-                            onChanged: (value) {
-                              if (value != null) {
-                                context.read<SettingsCubit>().toggleTheme(
-                                  value,
-                                );
-                              }
-                            },
-                            title: Text(_themeModeLabel(mode)),
-                          ),
-                        )
-                        .toList(),
+                  child: RadioGroup<ThemeMode>(
+                    groupValue: settings.themeMode,
+                    onChanged: (value) {
+                      if (value != null) {
+                        context.read<SettingsCubit>().toggleTheme(value);
+                      }
+                    },
+                    child: Column(
+                      children: ThemeMode.values
+                          .map(
+                            (mode) => RadioListTile<ThemeMode>(
+                              value: mode,
+                              title: Text(_themeModeLabel(mode)),
+                            ),
+                          )
+                          .toList(),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                _SectionHeader(title: '活動'),
+                _SectionHeader(title: 'Defaults'),
                 Card(
                   child: Column(
                     children: [
                       ListTile(
                         leading: const Icon(Icons.abc),
-                        title: const Text('預設活動名稱'),
+                        title: const Text('Default activity name'),
                         subtitle: Text(settings.defaultActivityNameFormat),
                         trailing: const Icon(Icons.edit_outlined),
                         onTap: () => _editDefaultName(
@@ -69,7 +69,7 @@ class SettingsPage extends StatelessWidget {
                       const Divider(height: 1),
                       ListTile(
                         leading: const Icon(Icons.folder_outlined),
-                        title: const Text('儲存路徑'),
+                        title: const Text('Storage path'),
                         subtitle: Text(settings.storagePath),
                         trailing: const Icon(Icons.edit_location_alt_outlined),
                         onTap: () =>
@@ -79,20 +79,15 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _SectionHeader(title: '關於'),
+                _SectionHeader(title: 'About'),
                 Card(
                   child: Column(
                     children: [
                       ListTile(
-                        leading: Icon(Icons.info_outline),
-                        title: Text('Event Album'),
-                        subtitle: Text('版本 ${settings.version}'),
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('Event Album'),
+                        subtitle: Text('Version ${settings.version}'),
                       ),
-                      // ListTile(
-                      //   leading: Icon(Icons.code_outlined),
-                      //   title: Text('開發'),
-                      //   subtitle: Text('OpenAI Codex · Flutter'),
-                      // ),
                     ],
                   ),
                 ),
@@ -107,11 +102,11 @@ class SettingsPage extends StatelessWidget {
   String _themeModeLabel(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.light:
-        return '淺色模式';
+        return 'Light';
       case ThemeMode.dark:
-        return '深色模式';
+        return 'Dark';
       case ThemeMode.system:
-        return '跟隨系統';
+        return 'System';
     }
   }
 
@@ -122,19 +117,19 @@ class SettingsPage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('預設活動名稱'),
+          title: const Text('Default activity name'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('可使用 {date} 插入今日日期。'),
+              const Text("Use {date} to include today's date."),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  labelText: '名稱格式',
-                  helperText: '例如：Event {date}',
+                  labelText: 'Name format',
+                  helperText: 'Example: Event {date}',
                 ),
               ),
             ],
@@ -142,12 +137,12 @@ class SettingsPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('儲存'),
+              child: const Text('Save'),
             ),
           ],
         );
@@ -166,24 +161,24 @@ class SettingsPage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('變更儲存路徑'),
+          title: const Text('Change storage path'),
           content: TextField(
             controller: controller,
             autofocus: true,
             decoration: const InputDecoration(
-              labelText: '資料夾路徑',
-              helperText: '請輸入有效的本機路徑',
+              labelText: 'Directory path',
+              helperText: 'Enter a writable folder path.',
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () =>
                   Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('儲存'),
+              child: const Text('Save'),
             ),
           ],
         );

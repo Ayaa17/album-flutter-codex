@@ -349,8 +349,8 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
   }
 
   Offset _clampToTarget(Offset rawPosition, Size targetSize) {
-    final dx = rawPosition.dx.clamp(0.0, targetSize.width) as double;
-    final dy = rawPosition.dy.clamp(0.0, targetSize.height) as double;
+    final dx = rawPosition.dx.clamp(0.0, targetSize.width);
+    final dy = rawPosition.dy.clamp(0.0, targetSize.height);
     return Offset(dx, dy);
   }
 
@@ -392,7 +392,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
           },
         ) ??
         false;
-    if (!confirmed) return;
+    if (!confirmed || !context.mounted) return;
     await context.read<ActivityDetailCubit>().removeArrow(round.id, arrow.id);
     if (!mounted) return;
     if (_highlightedArrowId == arrow.id) {
@@ -451,7 +451,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
           fit: StackFit.expand,
           children: [
             CustomPaint(
-              painter: ArcheryTargetPainter(
+              painter: _ArcheryTargetPainter(
                 arrows: arrows,
                 highlightedArrowId: highlightId,
                 targetFaceType: state.activity.targetFaceType,
@@ -467,10 +467,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     );
   }
 
-  Size _expandedTargetSize(
-    TargetFaceType type,
-    BoxConstraints constraints,
-  ) {
+  Size _expandedTargetSize(TargetFaceType type, BoxConstraints constraints) {
     const double padding = 24.0;
     final maxWidth = math.max(0.0, constraints.maxWidth - padding);
     final maxHeight = math.max(0.0, constraints.maxHeight - padding);
@@ -484,10 +481,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     if (type == TargetFaceType.triangularTripleSixRing) {
       const double widthFactor = 4.56;
       const double heightFactor = 4.2;
-      final radius = math.min(
-        maxWidth / widthFactor,
-        maxHeight / heightFactor,
-      );
+      final radius = math.min(maxWidth / widthFactor, maxHeight / heightFactor);
       return Size(radius * widthFactor, radius * heightFactor);
     }
 
@@ -550,7 +544,7 @@ class _RoundHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Round $roundIndex · ${round.totalScore} pts',
+          'Round $roundIndex - ${round.totalScore} pts',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
           ),
@@ -623,7 +617,7 @@ class _AllRoundsHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '$totalRounds rounds · $totalArrows arrows',
+          '$totalRounds rounds - $totalArrows arrows',
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
         ),
       ],
@@ -671,12 +665,12 @@ class _ArrowScorePill extends StatelessWidget {
         border: Border.all(
           color: isHighlighted
               ? Colors.orangeAccent
-              : colorScheme.onPrimary.withOpacity(0.18),
+              : colorScheme.onPrimary.withValues(alpha: 0.18),
           width: isHighlighted ? 2.0 : 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: base.withOpacity(0.22),
+            color: base.withValues(alpha: 0.22),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -699,7 +693,7 @@ class _ArrowScorePill extends StatelessWidget {
                   color: colorScheme.onPrimary,
                   shadows: [
                     Shadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -762,7 +756,7 @@ class _RoundListState extends State<_RoundList> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Photo not found. Please capture a new one.'),
-          duration: const Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 300),
         ),
       );
       await cubit.attachPhoto(round.id);
@@ -873,7 +867,7 @@ class _RoundListState extends State<_RoundList> {
                       : CircleAvatar(child: Text('$roundNumber')),
                   title: Text('Round $roundNumber'),
                   subtitle: Text(
-                    'Score: ${round.totalScore} · Arrows: ${round.arrows.length}',
+                    'Score: ${round.totalScore} - Arrows: ${round.arrows.length}',
                   ),
                   trailing: Wrap(
                     spacing: 8,
@@ -935,8 +929,7 @@ class _AllRoundsSummaryCard extends StatelessWidget {
     final tenCount = rounds.fold<int>(
       0,
       (sum, round) =>
-          sum +
-          round.arrows.where((a) => a.score == 10 && !a.isX).length,
+          sum + round.arrows.where((a) => a.score == 10 && !a.isX).length,
     );
     final totalTenCount = xCount + tenCount;
 
@@ -1057,9 +1050,11 @@ class _SummaryStatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.35),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.18)),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.18),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1068,7 +1063,7 @@ class _SummaryStatChip extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.1,
             ),
@@ -1103,7 +1098,7 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ),
@@ -1126,8 +1121,8 @@ class _TargetArrow {
   final bool isSelectedRound;
 }
 
-class ArcheryTargetPainter extends CustomPainter {
-  ArcheryTargetPainter({
+class _ArcheryTargetPainter extends CustomPainter {
+  _ArcheryTargetPainter({
     required this.arrows,
     this.highlightedArrowId,
     required this.targetFaceType,
@@ -1184,14 +1179,14 @@ class ArcheryTargetPainter extends CustomPainter {
             ? Colors.orange
             : targetArrow.isSelectedRound
             ? Colors.deepPurple
-            : Colors.deepPurple.withOpacity(0.55);
+            : Colors.deepPurple.withValues(alpha: 0.55);
       final absolute = spot.center + arrow.position * scale;
       canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
       if (isHighlighted) {
         final ring = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5
-          ..color = Colors.orangeAccent.withOpacity(0.9);
+          ..color = Colors.orangeAccent.withValues(alpha: 0.9);
         canvas.drawCircle(absolute, 14, ring);
       }
       final textPainter = TextPainter(
@@ -1213,7 +1208,7 @@ class ArcheryTargetPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant ArcheryTargetPainter oldDelegate) {
+  bool shouldRepaint(covariant _ArcheryTargetPainter oldDelegate) {
     return oldDelegate.arrows != arrows ||
         oldDelegate.highlightedArrowId != highlightedArrowId ||
         oldDelegate.targetFaceType != targetFaceType;
@@ -1281,7 +1276,7 @@ class _CrosshairPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final guidePaint = Paint()
-      ..color = Colors.orangeAccent.withOpacity(0.8)
+      ..color = Colors.orangeAccent.withValues(alpha: 0.8)
       ..strokeWidth = 1.5;
     canvas.drawLine(
       Offset(position.dx, 0),

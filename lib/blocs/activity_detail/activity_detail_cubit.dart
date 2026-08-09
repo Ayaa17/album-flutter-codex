@@ -135,10 +135,6 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
         targetSize: targetSize,
         targetFaceType: state.activity.targetFaceType,
       );
-      final latestRound = updated.firstWhere(
-        (element) => element.id == round.id,
-      );
-      final addedArrow = latestRound.arrows.first;
       emit(
         state.copyWith(
           status: ActivityDetailStatus.success,

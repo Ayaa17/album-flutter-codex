@@ -117,12 +117,11 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-      // floating button
-      // floatingActionButton: FloatingActionButton.extended(
-      //   onPressed: () => _showCreateSheet(context),
-      //   icon: const Icon(Icons.add_a_photo_outlined),
-      //   label: const Text('Add / Capture'),
-      // ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCreateSheet(context),
+        icon: const Icon(Icons.add_a_photo_outlined),
+        label: const Text('Add / Capture'),
+      ),
     );
   }
 
@@ -174,7 +173,7 @@ class _HomePageState extends State<HomePage> {
                 leading: const Icon(Icons.bolt_outlined),
                 title: const Text('Quick capture'),
                 subtitle: const Text(
-                  'Auto-create today’s activity and open the camera',
+                  "Auto-create today's activity and open the camera",
                 ),
                 onTap: () async {
                   Navigator.of(sheetContext).pop('quick');
@@ -185,7 +184,7 @@ class _HomePageState extends State<HomePage> {
                   );
                   if (!context.mounted || setup == null) return;
                   activityBloc.add(
-                    ActivityQuickCaptured(defaultName, setup.targetFaceType),
+                    ActivityQuickCaptured(setup.name, setup.targetFaceType),
                   );
                 },
               ),
@@ -284,18 +283,25 @@ class _HomePageState extends State<HomePage> {
                       'Target face',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    ...TargetFaceType.values.map(
-                      (type) => RadioListTile<TargetFaceType>(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        value: type,
-                        groupValue: selected,
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => selected = value);
-                        },
-                        title: Text(type.label),
-                        subtitle: Text(type.description),
+                    RadioGroup<TargetFaceType>(
+                      groupValue: selected,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => selected = value);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: TargetFaceType.values
+                            .map(
+                              (type) => RadioListTile<TargetFaceType>(
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                                value: type,
+                                title: Text(type.label),
+                                subtitle: Text(type.description),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
                   ],
@@ -336,7 +342,7 @@ class _HomePageState extends State<HomePage> {
         .timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            if (mounted) {
+            if (mounted && context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Refresh timed out. Please try again.'),
@@ -538,7 +544,7 @@ class _StatsSection extends StatelessWidget {
             ),
       monthly: _Snapshot(
         title: 'This month',
-        subtitle: '${monthActivities} activities',
+        subtitle: '$monthActivities activities',
         icon: Icons.calendar_today_outlined,
         activities: monthActivities,
         rounds: monthRounds,
@@ -684,7 +690,7 @@ class _StatPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withValues(alpha: 0.5),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

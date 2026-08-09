@@ -62,10 +62,9 @@ class ActivityCard extends StatelessWidget {
                         _TargetBadge(type: activity.targetFaceType),
                         _ActivityStatsRow(activityId: activity.id),
                         Text(
-                          'Created ${_formatDate(activity.createdAt)} · ${activity.photoCount} photos',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                          'Created ${_formatDate(activity.createdAt)} - ${activity.photoCount} photos',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.black54),
                         ),
                       ],
                     ),
@@ -122,20 +121,23 @@ class _TargetBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withValues(alpha: 0.6),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.track_changes_outlined,
-              size: 16, color: colorScheme.primary),
+          Icon(
+            Icons.track_changes_outlined,
+            size: 16,
+            color: colorScheme.primary,
+          ),
           const SizedBox(width: 6),
           Text(
             type.label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -193,8 +195,9 @@ class _ActivityStatsRow extends StatelessWidget {
       0,
       (sum, round) => sum + round.totalScore,
     );
-    final average =
-        totalArrows == 0 ? 0.0 : totalScore / totalArrows.toDouble();
+    final average = totalArrows == 0
+        ? 0.0
+        : totalScore / totalArrows.toDouble();
     return _ActivityQuickStats(totalArrows: totalArrows, averageScore: average);
   }
 
@@ -203,7 +206,7 @@ class _ActivityStatsRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withValues(alpha: 0.55),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -213,9 +216,9 @@ class _ActivityStatsRow extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             text,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

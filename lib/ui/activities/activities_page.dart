@@ -260,18 +260,25 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
                       'Target face',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    ...TargetFaceType.values.map(
-                      (type) => RadioListTile<TargetFaceType>(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        value: type,
-                        groupValue: selected,
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => selected = value);
-                        },
-                        title: Text(type.label),
-                        subtitle: Text(type.description),
+                    RadioGroup<TargetFaceType>(
+                      groupValue: selected,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => selected = value);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: TargetFaceType.values
+                            .map(
+                              (type) => RadioListTile<TargetFaceType>(
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                                value: type,
+                                title: Text(type.label),
+                                subtitle: Text(type.description),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
                   ],
@@ -330,7 +337,7 @@ class _ActivitiesHeader extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             colorScheme.primary.withValues(alpha: 0.14),
-            colorScheme.surfaceVariant.withValues(alpha: 0.35),
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

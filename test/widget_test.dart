@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +13,7 @@ import 'package:flutter_album_codex/data/models/activity.dart';
 import 'package:flutter_album_codex/data/models/app_settings.dart';
 import 'package:flutter_album_codex/data/models/target_face.dart';
 import 'package:flutter_album_codex/data/repositories/activity_repository.dart';
+import 'package:flutter_album_codex/data/repositories/archery_repository.dart';
 import 'package:flutter_album_codex/data/repositories/settings_repository.dart';
 import 'package:flutter_album_codex/data/services/storage_service.dart';
 import 'package:flutter_album_codex/ui/home/home_page.dart';
@@ -74,21 +75,38 @@ void main() {
         themeMode: ThemeMode.system,
         defaultActivityNameFormat: 'Event {date}',
         storagePath: '',
+        version: '0.0.0',
       ),
     );
 
     await tester.pumpWidget(
-      MultiBlocProvider(
+      MultiRepositoryProvider(
         providers: [
-          BlocProvider<ActivityBloc>.value(value: activityBloc),
-          BlocProvider<SettingsCubit>.value(value: settingsCubit),
-          BlocProvider(create: (_) => NavigationCubit()),
+          RepositoryProvider(
+            create: (_) => ArcheryRepository(
+              storageService: StorageService(
+                overrideRoot: Directory.systemTemp.createTempSync(),
+              ),
+            ),
+          ),
         ],
-        child: const MaterialApp(home: HomePage()),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<ActivityBloc>.value(value: activityBloc),
+            BlocProvider<SettingsCubit>.value(value: settingsCubit),
+            BlocProvider(create: (_) => NavigationCubit()),
+          ],
+          child: const MaterialApp(home: HomePage()),
+        ),
       ),
     );
 
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Recent sessions'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     expect(find.text('Recent sessions'), findsOneWidget);
   });

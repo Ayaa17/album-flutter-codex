@@ -34,5 +34,6 @@ class AppSettings extends Equatable {
     themeMode,
     defaultActivityNameFormat,
     storagePath,
+    version,
   ];
 }

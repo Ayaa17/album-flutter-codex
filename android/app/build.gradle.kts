@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION", "DEPRECATION_ERROR")
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -11,7 +13,7 @@ import java.io.FileInputStream
 android {
     namespace = "com.aya.flutter_album_codex"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "26.3.11579264"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

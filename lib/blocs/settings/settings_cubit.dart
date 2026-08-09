@@ -20,7 +20,12 @@ class SettingsCubit extends Cubit<SettingsState> {
       final settings = await _repository.loadSettings();
       emit(state.copyWith(settings: settings, status: SettingsStatus.success));
     } catch (_) {
-      emit(state.copyWith(status: SettingsStatus.failure, message: '載入設定失敗。'));
+      emit(
+        state.copyWith(
+          status: SettingsStatus.failure,
+          message: 'Failed to load settings.',
+        ),
+      );
     }
   }
 
@@ -32,11 +37,16 @@ class SettingsCubit extends Cubit<SettingsState> {
         state.copyWith(
           settings: state.settings.copyWith(themeMode: mode),
           status: SettingsStatus.success,
-          message: '主題已更新',
+          message: 'Theme updated.',
         ),
       );
     } catch (_) {
-      emit(state.copyWith(status: SettingsStatus.failure, message: '更新主題失敗。'));
+      emit(
+        state.copyWith(
+          status: SettingsStatus.failure,
+          message: 'Unable to update theme.',
+        ),
+      );
     }
   }
 
@@ -48,12 +58,15 @@ class SettingsCubit extends Cubit<SettingsState> {
         state.copyWith(
           settings: state.settings.copyWith(defaultActivityNameFormat: value),
           status: SettingsStatus.success,
-          message: '預設名稱已更新',
+          message: 'Default name updated.',
         ),
       );
     } catch (_) {
       emit(
-        state.copyWith(status: SettingsStatus.failure, message: '更新預設名稱失敗。'),
+        state.copyWith(
+          status: SettingsStatus.failure,
+          message: 'Unable to update default name.',
+        ),
       );
     }
   }
@@ -66,12 +79,15 @@ class SettingsCubit extends Cubit<SettingsState> {
         state.copyWith(
           settings: state.settings.copyWith(storagePath: updatedPath),
           status: SettingsStatus.success,
-          message: '儲存路徑已更新',
+          message: 'Storage path updated.',
         ),
       );
     } catch (_) {
       emit(
-        state.copyWith(status: SettingsStatus.failure, message: '更新儲存路徑失敗。'),
+        state.copyWith(
+          status: SettingsStatus.failure,
+          message: 'Unable to update storage path.',
+        ),
       );
     }
   }

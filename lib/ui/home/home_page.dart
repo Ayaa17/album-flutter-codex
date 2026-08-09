@@ -14,8 +14,10 @@ import '../../blocs/settings/settings_cubit.dart';
 import '../../data/models/activity.dart';
 import '../../data/models/target_face.dart';
 import '../../data/repositories/archery_repository.dart';
+import '../../data/services/activity_stats_service.dart';
 import '../activities/activity_detail_page.dart';
 import '../common/activity_card.dart';
+import '../common/activity_setup_dialog.dart';
 import '../common/empty_state.dart';
 
 class HomePage extends StatefulWidget {
@@ -158,7 +160,7 @@ class _HomePageState extends State<HomePage> {
                 subtitle: Text(defaultName),
                 onTap: () async {
                   Navigator.of(sheetContext).pop('create');
-                  final setup = await _promptActivitySetup(
+                  final setup = await showActivitySetupDialog(
                     context,
                     defaultName: defaultName,
                     confirmLabel: 'Create',
@@ -177,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 onTap: () async {
                   Navigator.of(sheetContext).pop('quick');
-                  final setup = await _promptActivitySetup(
+                  final setup = await showActivitySetupDialog(
                     context,
                     defaultName: defaultName,
                     confirmLabel: 'Start capture',
@@ -249,88 +251,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<_ActivitySetup?> _promptActivitySetup(
-    BuildContext context, {
-    required String defaultName,
-    required String confirmLabel,
-  }) {
-    final controller = TextEditingController(text: defaultName);
-    TargetFaceType selected = TargetFaceType.fullTenRing;
-    return showDialog<_ActivitySetup>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final bottomInset = MediaQuery.of(dialogContext).viewInsets.bottom;
-            return AlertDialog(
-              title: const Text('New activity'),
-              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-              content: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: bottomInset),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Activity name',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Target face',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    RadioGroup<TargetFaceType>(
-                      groupValue: selected,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => selected = value);
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: TargetFaceType.values
-                            .map(
-                              (type) => RadioListTile<TargetFaceType>(
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                                value: type,
-                                title: Text(type.label),
-                                subtitle: Text(type.description),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final name = controller.text.trim().isEmpty
-                        ? defaultName
-                        : controller.text.trim();
-                    Navigator.of(
-                      dialogContext,
-                    ).pop(_ActivitySetup(name: name, targetFaceType: selected));
-                  },
-                  child: Text(confirmLabel),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<void> _refreshActivities(BuildContext context) async {
     final bloc = context.read<ActivityBloc>();
     final nextState = bloc.stream
@@ -364,16 +284,52 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _StatsSection extends StatelessWidget {
+class _StatsSection extends StatefulWidget {
   const _StatsSection({super.key, required this.activities});
 
   final List<Activity> activities;
 
   @override
+  State<_StatsSection> createState() => _StatsSectionState();
+}
+
+class _StatsSectionState extends State<_StatsSection> {
+  ArcheryRepository? _repository;
+  Future<ActivityStats>? _statsFuture;
+  String? _activitySignature;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repository = context.read<ArcheryRepository>();
+    final signature = _signatureFor(widget.activities);
+    if (!identical(_repository, repository) ||
+        _activitySignature != signature) {
+      _repository = repository;
+      _activitySignature = signature;
+      _statsFuture = ActivityStatsService(
+        repository: repository,
+      ).compute(widget.activities);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final signature = _signatureFor(widget.activities);
+    if (_activitySignature != signature && _repository != null) {
+      _activitySignature = signature;
+      _statsFuture = ActivityStatsService(
+        repository: _repository!,
+      ).compute(widget.activities);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return FutureBuilder<_ActivityStats>(
-      future: _computeStats(context, activities),
+    return FutureBuilder<ActivityStats>(
+      future: _statsFuture,
       builder: (context, snapshot) {
         final stats = snapshot.data;
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
@@ -381,7 +337,7 @@ class _StatsSection extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final cards = stats?.snapshots ?? const <_Snapshot>[];
+        final cards = stats?.snapshots ?? const <ActivityStatsSnapshot>[];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,7 +381,7 @@ class _StatsSection extends StatelessWidget {
                     return _StatCard(
                       title: snapshot.title,
                       subtitle: snapshot.subtitle,
-                      icon: snapshot.icon,
+                      icon: _iconFor(snapshot.kind),
                       entries: [
                         _StatEntry(label: 'Rounds', value: snapshot.rounds),
                         _StatEntry(label: 'Arrows', value: snapshot.arrows),
@@ -454,115 +410,25 @@ class _StatsSection extends StatelessWidget {
     );
   }
 
-  Future<_ActivityStats> _computeStats(
-    BuildContext context,
-    List<Activity> activities,
-  ) async {
-    final repository = context.read<ArcheryRepository>();
+  String _signatureFor(List<Activity> activities) {
+    return activities
+        .map(
+          (activity) => [
+            activity.id,
+            activity.createdAt.toIso8601String(),
+            activity.name,
+            activity.targetFaceType.storageKey,
+          ].join(':'),
+        )
+        .join('|');
+  }
 
-    final now = DateTime.now();
-    final latestActivity = activities.isEmpty ? null : activities.first;
-
-    var totalRounds = 0;
-    var totalArrows = 0;
-    var totalScore = 0;
-    var bestRoundScore = 0;
-
-    var monthRounds = 0;
-    var monthArrows = 0;
-    var monthScore = 0;
-    var monthBest = 0;
-    var monthActivities = 0;
-
-    var latestRounds = 0;
-    var latestArrows = 0;
-    var latestScore = 0;
-    var latestBest = 0;
-
-    for (final activity in activities) {
-      final rounds = await repository.loadRounds(activity.id);
-      final roundCount = rounds.length;
-      final arrowsCount = rounds.fold<int>(
-        0,
-        (sum, round) => sum + round.arrows.length,
-      );
-      final scoreSum = rounds.fold<int>(
-        0,
-        (sum, round) => sum + round.totalScore,
-      );
-      final bestRound = rounds.fold<int>(
-        0,
-        (best, round) => math.max(best, round.totalScore),
-      );
-
-      totalRounds += rounds.length;
-      totalArrows += arrowsCount;
-      totalScore += scoreSum;
-      bestRoundScore = math.max(bestRoundScore, bestRound);
-
-      final isThisMonth =
-          activity.createdAt.year == now.year &&
-          activity.createdAt.month == now.month;
-      if (isThisMonth) {
-        monthActivities += 1;
-        monthRounds += roundCount;
-        monthArrows += arrowsCount;
-        monthScore += scoreSum;
-        monthBest = math.max(monthBest, bestRound);
-      }
-
-      if (latestActivity != null && activity.id == latestActivity.id) {
-        latestRounds = roundCount;
-        latestArrows = arrowsCount;
-        latestScore = scoreSum;
-        latestBest = bestRound;
-      }
-    }
-
-    final double averageRoundScore = totalRounds == 0
-        ? 0.0
-        : totalScore.toDouble() / totalRounds;
-    final double monthAverage = monthRounds == 0
-        ? 0.0
-        : monthScore.toDouble() / monthRounds;
-    final double latestAverage = latestRounds == 0
-        ? 0.0
-        : latestScore.toDouble() / latestRounds;
-
-    return _ActivityStats(
-      latest: latestActivity == null
-          ? null
-          : _Snapshot(
-              title: 'Latest session',
-              subtitle: latestActivity.name,
-              icon: Icons.flag_outlined,
-              activities: 1,
-              rounds: latestRounds,
-              arrows: latestArrows,
-              bestRoundScore: latestBest,
-              averageRoundScore: latestAverage,
-            ),
-      monthly: _Snapshot(
-        title: 'This month',
-        subtitle: '$monthActivities activities',
-        icon: Icons.calendar_today_outlined,
-        activities: monthActivities,
-        rounds: monthRounds,
-        arrows: monthArrows,
-        bestRoundScore: monthBest,
-        averageRoundScore: monthAverage,
-      ),
-      overall: _Snapshot(
-        title: 'All time',
-        subtitle: '${activities.length} activities',
-        icon: Icons.all_inclusive,
-        activities: activities.length,
-        rounds: totalRounds,
-        arrows: totalArrows,
-        bestRoundScore: bestRoundScore,
-        averageRoundScore: averageRoundScore,
-      ),
-    );
+  IconData _iconFor(ActivityStatsSnapshotKind kind) {
+    return switch (kind) {
+      ActivityStatsSnapshotKind.latest => Icons.flag_outlined,
+      ActivityStatsSnapshotKind.monthly => Icons.calendar_today_outlined,
+      ActivityStatsSnapshotKind.overall => Icons.all_inclusive,
+    };
   }
 }
 
@@ -788,51 +654,4 @@ class _StatPlaceholder extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ActivityStats {
-  const _ActivityStats({
-    required this.latest,
-    required this.monthly,
-    required this.overall,
-  });
-
-  final _Snapshot? latest;
-  final _Snapshot monthly;
-  final _Snapshot overall;
-
-  List<_Snapshot> get snapshots => [
-    if (latest != null) latest!,
-    monthly,
-    overall,
-  ];
-}
-
-class _Snapshot {
-  const _Snapshot({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.activities,
-    required this.rounds,
-    required this.arrows,
-    required this.bestRoundScore,
-    required this.averageRoundScore,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final int activities;
-  final int rounds;
-  final int arrows;
-  final int bestRoundScore;
-  final double averageRoundScore;
-}
-
-class _ActivitySetup {
-  const _ActivitySetup({required this.name, required this.targetFaceType});
-
-  final String name;
-  final TargetFaceType targetFaceType;
 }

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -101,6 +99,7 @@ class ArcheryRound extends Equatable {
     if (arrows.isEmpty) return 0.0;
     return totalScore / arrows.length;
   }
+
   factory ArcheryRound.create() {
     return ArcheryRound(
       id: _uuid.v4(),
@@ -138,10 +137,5 @@ class ArcheryRound extends Equatable {
   final List<ArrowHit> arrows;
 
   @override
-  List<Object?> get props => [
-    id,
-    createdAt,
-    photoPath,
-    jsonEncode(arrows.map((a) => a.toMap())),
-  ];
+  List<Object?> get props => [id, createdAt, photoPath, arrows];
 }

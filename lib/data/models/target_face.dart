@@ -68,24 +68,44 @@ extension TargetFaceTypeX on TargetFaceType {
       case TargetFaceType.half80cmSixRing:
         final radius = math.min(size.width, size.height) / 2;
         return [
-          TargetSpot(center: Offset(size.width / 2, size.height / 2), radius: radius),
+          TargetSpot(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: radius,
+          ),
         ];
       case TargetFaceType.verticalTripleSixRing:
         final radius = math.min(size.width / 2, size.height / 6);
         return [
           TargetSpot(center: Offset(size.width / 2, radius), radius: radius),
-          TargetSpot(center: Offset(size.width / 2, size.height / 2), radius: radius),
-          TargetSpot(center: Offset(size.width / 2, size.height - radius), radius: radius),
+          TargetSpot(
+            center: Offset(size.width / 2, size.height / 2),
+            radius: radius,
+          ),
+          TargetSpot(
+            center: Offset(size.width / 2, size.height - radius),
+            radius: radius,
+          ),
         ];
       case TargetFaceType.triangularTripleSixRing:
-        final radius = math.min(size.width / 3.6, size.height / 4.2);
+        const widthFactor = 4.56;
+        const heightFactor = 4.2;
+        final radius = math.min(
+          size.width / widthFactor,
+          size.height / heightFactor,
+        );
         final top = Offset(size.width / 2, radius);
         final bottomY = size.height - radius;
         final xOffset = radius * 1.28;
         return [
           TargetSpot(center: top, radius: radius),
-          TargetSpot(center: Offset(size.width / 2 - xOffset, bottomY), radius: radius),
-          TargetSpot(center: Offset(size.width / 2 + xOffset, bottomY), radius: radius),
+          TargetSpot(
+            center: Offset(size.width / 2 - xOffset, bottomY),
+            radius: radius,
+          ),
+          TargetSpot(
+            center: Offset(size.width / 2 + xOffset, bottomY),
+            radius: radius,
+          ),
         ];
     }
   }

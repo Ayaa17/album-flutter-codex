@@ -145,16 +145,41 @@ class _TargetBadge extends StatelessWidget {
   }
 }
 
-class _ActivityStatsRow extends StatelessWidget {
+class _ActivityStatsRow extends StatefulWidget {
   const _ActivityStatsRow({required this.activityId});
 
   final String activityId;
 
   @override
-  Widget build(BuildContext context) {
+  State<_ActivityStatsRow> createState() => _ActivityStatsRowState();
+}
+
+class _ActivityStatsRowState extends State<_ActivityStatsRow> {
+  ArcheryRepository? _repository;
+  Future<_ActivityQuickStats>? _statsFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final repository = context.read<ArcheryRepository>();
+    if (!identical(_repository, repository)) {
+      _repository = repository;
+      _statsFuture = _load(repository, widget.activityId);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ActivityStatsRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activityId != widget.activityId && _repository != null) {
+      _statsFuture = _load(_repository!, widget.activityId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<_ActivityQuickStats>(
-      future: _load(repository),
+      future: _statsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();
@@ -182,7 +207,10 @@ class _ActivityStatsRow extends StatelessWidget {
     );
   }
 
-  Future<_ActivityQuickStats> _load(ArcheryRepository repository) async {
+  Future<_ActivityQuickStats> _load(
+    ArcheryRepository repository,
+    String activityId,
+  ) async {
     final rounds = await repository.loadRounds(activityId);
     if (rounds.isEmpty) {
       return const _ActivityQuickStats(totalArrows: 0, averageScore: 0);

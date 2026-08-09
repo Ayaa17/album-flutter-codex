@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../data/models/target_face.dart';
 
 class ActivitySetup {
-  const ActivitySetup({required this.name, required this.targetFaceType});
+  const ActivitySetup({
+    required this.name,
+    required this.targetFaceType,
+    required this.distanceMeters,
+  });
 
   final String name;
   final TargetFaceType targetFaceType;
+  final int distanceMeters;
 }
 
 Future<ActivitySetup?> showActivitySetupDialog(
@@ -17,7 +23,9 @@ Future<ActivitySetup?> showActivitySetupDialog(
   bool autofocusName = true,
 }) {
   final controller = TextEditingController(text: defaultName);
+  final distanceController = TextEditingController(text: '70');
   TargetFaceType selected = TargetFaceType.fullTenRing;
+  String? distanceErrorText;
 
   return showDialog<ActivitySetup>(
     context: context,
@@ -39,6 +47,17 @@ Future<ActivitySetup?> showActivitySetupDialog(
                     autofocus: autofocusName,
                     decoration: const InputDecoration(
                       labelText: 'Activity name',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: distanceController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: 'Distance',
+                      suffixText: 'm',
+                      errorText: distanceErrorText,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -79,13 +98,23 @@ Future<ActivitySetup?> showActivitySetupDialog(
                 onPressed: () {
                   final trimmed = controller.text.trim();
                   final name = trimmed.isEmpty ? defaultName : trimmed;
-                  if (name.isEmpty) {
-                    Navigator.of(dialogContext).pop();
+                  final distance = int.tryParse(distanceController.text.trim());
+                  if (distance == null || distance <= 0) {
+                    setState(
+                      () => distanceErrorText = 'Enter a distance in meters.',
+                    );
                     return;
                   }
-                  Navigator.of(
-                    dialogContext,
-                  ).pop(ActivitySetup(name: name, targetFaceType: selected));
+                  if (name.isEmpty) {
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(
+                    ActivitySetup(
+                      name: name,
+                      targetFaceType: selected,
+                      distanceMeters: distance,
+                    ),
+                  );
                 },
                 child: Text(confirmLabel),
               ),
@@ -94,5 +123,8 @@ Future<ActivitySetup?> showActivitySetupDialog(
         },
       );
     },
-  );
+  ).whenComplete(() {
+    controller.dispose();
+    distanceController.dispose();
+  });
 }

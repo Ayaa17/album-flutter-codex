@@ -19,23 +19,29 @@ class ActivityRefreshed extends ActivityEvent {
 }
 
 class ActivityCreated extends ActivityEvent {
-  const ActivityCreated(this.name, this.targetFaceType);
+  const ActivityCreated(this.name, this.targetFaceType, {this.distanceMeters});
 
   final String name;
   final TargetFaceType targetFaceType;
+  final int? distanceMeters;
 
   @override
-  List<Object?> get props => [name, targetFaceType];
+  List<Object?> get props => [name, targetFaceType, distanceMeters];
 }
 
 class ActivityQuickCaptured extends ActivityEvent {
-  const ActivityQuickCaptured(this.defaultName, this.targetFaceType);
+  const ActivityQuickCaptured(
+    this.defaultName,
+    this.targetFaceType, {
+    this.distanceMeters,
+  });
 
   final String defaultName;
   final TargetFaceType targetFaceType;
+  final int? distanceMeters;
 
   @override
-  List<Object?> get props => [defaultName, targetFaceType];
+  List<Object?> get props => [defaultName, targetFaceType, distanceMeters];
 }
 
 class ActivityRenamed extends ActivityEvent {

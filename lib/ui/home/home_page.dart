@@ -167,7 +167,11 @@ class _HomePageState extends State<HomePage> {
                   );
                   if (!context.mounted || setup == null) return;
                   activityBloc.add(
-                    ActivityCreated(setup.name, setup.targetFaceType),
+                    ActivityCreated(
+                      setup.name,
+                      setup.targetFaceType,
+                      distanceMeters: setup.distanceMeters,
+                    ),
                   );
                 },
               ),
@@ -186,7 +190,11 @@ class _HomePageState extends State<HomePage> {
                   );
                   if (!context.mounted || setup == null) return;
                   activityBloc.add(
-                    ActivityQuickCaptured(setup.name, setup.targetFaceType),
+                    ActivityQuickCaptured(
+                      setup.name,
+                      setup.targetFaceType,
+                      distanceMeters: setup.distanceMeters,
+                    ),
                   );
                 },
               ),

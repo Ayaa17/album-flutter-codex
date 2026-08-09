@@ -54,6 +54,7 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
       final created = await _repository.createActivity(
         event.name,
         targetFaceType: event.targetFaceType,
+        distanceMeters: event.distanceMeters,
       );
       await _loadActivities(emit);
       emit(
@@ -88,6 +89,7 @@ class ActivityBloc extends Bloc<ActivityEvent, ActivityState> {
       await _repository.quickCapture(
         defaultName: event.defaultName,
         targetFaceType: event.targetFaceType,
+        distanceMeters: event.distanceMeters,
       );
       await _loadActivities(emit);
       emit(state.copyWith(message: 'Quick capture saved.'));

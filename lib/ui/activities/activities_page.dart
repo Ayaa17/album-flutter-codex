@@ -108,7 +108,11 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
     );
     if (setup == null || !context.mounted) return;
     context.read<ActivityBloc>().add(
-      ActivityCreated(setup.name, setup.targetFaceType),
+      ActivityCreated(
+        setup.name,
+        setup.targetFaceType,
+        distanceMeters: setup.distanceMeters,
+      ),
     );
   }
 

@@ -11,6 +11,7 @@ class Activity extends Equatable {
     required this.photoCount,
     required this.coverPhotoPath,
     required this.targetFaceType,
+    this.distanceMeters,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class Activity extends Equatable {
   final int photoCount;
   final String? coverPhotoPath;
   final TargetFaceType targetFaceType;
+  final int? distanceMeters;
 
   Activity copyWith({
     String? name,
@@ -28,6 +30,7 @@ class Activity extends Equatable {
     int? photoCount,
     String? coverPhotoPath,
     TargetFaceType? targetFaceType,
+    int? distanceMeters,
   }) {
     return Activity(
       id: id,
@@ -37,6 +40,7 @@ class Activity extends Equatable {
       photoCount: photoCount ?? this.photoCount,
       coverPhotoPath: coverPhotoPath ?? this.coverPhotoPath,
       targetFaceType: targetFaceType ?? this.targetFaceType,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
     );
   }
 
@@ -49,5 +53,6 @@ class Activity extends Equatable {
     photoCount,
     coverPhotoPath,
     targetFaceType,
+    distanceMeters,
   ];
 }

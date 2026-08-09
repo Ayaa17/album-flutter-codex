@@ -60,6 +60,10 @@ class ActivityCard extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _TargetBadge(type: activity.targetFaceType),
+                        if (activity.distanceMeters != null)
+                          _DistanceBadge(
+                            distanceMeters: activity.distanceMeters!,
+                          ),
                         _ActivityStatsRow(activityId: activity.id),
                         Text(
                           'Created ${_formatDate(activity.createdAt)} - ${activity.photoCount} photos',
@@ -107,6 +111,37 @@ class ActivityCard extends StatelessWidget {
   String _formatDate(DateTime date) {
     String twoDigits(int value) => value.toString().padLeft(2, '0');
     return '${date.year}/${twoDigits(date.month)}/${twoDigits(date.day)}';
+  }
+}
+
+class _DistanceBadge extends StatelessWidget {
+  const _DistanceBadge({required this.distanceMeters});
+
+  final int distanceMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.straighten_outlined, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            '${distanceMeters}m',
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
   }
 }
 

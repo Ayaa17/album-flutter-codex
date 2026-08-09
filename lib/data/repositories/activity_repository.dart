@@ -43,6 +43,7 @@ class ActivityRepository {
   Future<Activity> createActivity(
     String name, {
     TargetFaceType targetFaceType = TargetFaceType.fullTenRing,
+    int? distanceMeters,
   }) async {
     final sanitized = _sanitizeFileName(name);
     final id = '${DateTime.now().millisecondsSinceEpoch}_$sanitized';
@@ -52,6 +53,7 @@ class ActivityRepository {
       name: name.trim().isEmpty ? 'Event ${DateTime.now().year}' : name.trim(),
       createdAt: DateTime.now(),
       targetFaceType: targetFaceType,
+      distanceMeters: distanceMeters,
     );
     await _writeMetadata(directory, metadata);
     return Activity(
@@ -62,23 +64,31 @@ class ActivityRepository {
       photoCount: 0,
       coverPhotoPath: null,
       targetFaceType: targetFaceType,
+      distanceMeters: distanceMeters,
     );
   }
 
   Future<Activity> quickCapture({
     required String defaultName,
     TargetFaceType targetFaceType = TargetFaceType.fullTenRing,
+    int? distanceMeters,
   }) async {
     final activities = await loadActivities();
     final existing = activities
         .where(
           (item) =>
-              item.name == defaultName && item.targetFaceType == targetFaceType,
+              item.name == defaultName &&
+              item.targetFaceType == targetFaceType &&
+              item.distanceMeters == distanceMeters,
         )
         .toList();
     final target = existing.isNotEmpty
         ? existing.first
-        : await createActivity(defaultName, targetFaceType: targetFaceType);
+        : await createActivity(
+            defaultName,
+            targetFaceType: targetFaceType,
+            distanceMeters: distanceMeters,
+          );
     final captured = await _capturePhotoForActivity(target.id);
     if (captured == null) {
       return target;
@@ -155,7 +165,9 @@ class ActivityRepository {
       final fileName = p.basename(entity.path);
       if (fileName.startsWith('photo_')) {
         if (capturedCover == null ||
-            stat.modified.isAfter(capturedModified ?? DateTime.fromMillisecondsSinceEpoch(0))) {
+            stat.modified.isAfter(
+              capturedModified ?? DateTime.fromMillisecondsSinceEpoch(0),
+            )) {
           capturedCover = entity;
           capturedModified = stat.modified;
         }
@@ -178,6 +190,7 @@ class ActivityRepository {
       photoCount: photoCount,
       coverPhotoPath: cover?.path,
       targetFaceType: metadata.targetFaceType,
+      distanceMeters: metadata.distanceMeters,
     );
   }
 
@@ -198,6 +211,7 @@ class ActivityRepository {
       final name = (raw['name'] as String?)?.trim();
       final createdAtString = (raw['createdAt'] as String?)?.trim();
       final targetFaceRaw = raw['targetFace'] as String?;
+      final distanceMeters = (raw['distanceMeters'] as num?)?.toInt();
       if (id == null || id.isEmpty) return null;
       if (name == null || name.isEmpty) return null;
       if (createdAtString == null || createdAtString.isEmpty) return null;
@@ -208,6 +222,7 @@ class ActivityRepository {
         name: name,
         createdAt: createdAt,
         targetFaceType: TargetFaceTypeX.fromStorage(targetFaceRaw),
+        distanceMeters: distanceMeters,
       );
     } catch (_) {
       return null;
@@ -224,6 +239,7 @@ class ActivityRepository {
       'name': metadata.name,
       'createdAt': metadata.createdAt.toIso8601String(),
       'targetFace': metadata.targetFaceType.storageKey,
+      'distanceMeters': metadata.distanceMeters,
     });
     await file.writeAsString(payload, flush: true);
   }
@@ -273,23 +289,27 @@ class _ActivityMetadata {
     required this.name,
     required this.createdAt,
     required this.targetFaceType,
+    this.distanceMeters,
   });
 
   final String id;
   final String name;
   final DateTime createdAt;
   final TargetFaceType targetFaceType;
+  final int? distanceMeters;
 
   _ActivityMetadata copyWith({
     String? name,
     DateTime? createdAt,
     TargetFaceType? targetFaceType,
+    int? distanceMeters,
   }) {
     return _ActivityMetadata(
       id: id,
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
       targetFaceType: targetFaceType ?? this.targetFaceType,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
     );
   }
 }

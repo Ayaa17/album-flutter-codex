@@ -69,4 +69,41 @@ void main() {
 
     expect(updated.single.arrows.single.score, 9);
   });
+
+  test('nudges an arrow and recalculates score', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'archery_repository_test',
+    );
+    addTearDown(() => tempDir.delete(recursive: true));
+
+    final repository = ArcheryRepository(
+      storageService: StorageService(overrideRoot: tempDir),
+    );
+    final createdAt = DateTime(2026, 8, 9);
+    final arrow = ArrowHit(
+      id: 'arrow-1',
+      position: const Offset(24, 0),
+      score: 9,
+      createdAt: createdAt,
+      targetIndex: 0,
+    );
+    final round = ArcheryRound(
+      id: 'round-1',
+      createdAt: createdAt,
+      arrows: [arrow],
+    );
+
+    final updated = await repository.nudgeArrow(
+      activityId: 'activity-1',
+      rounds: [round],
+      roundId: round.id,
+      arrowId: arrow.id,
+      delta: const Offset(-10, 0),
+      targetFaceType: TargetFaceType.fullTenRing,
+    );
+
+    final updatedArrow = updated.single.arrows.single;
+    expect(updatedArrow.position, const Offset(14, 0));
+    expect(updatedArrow.score, 10);
+  });
 }

@@ -1,7 +1,8 @@
-import 'dart:io';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/activity_detail/activity_detail_cubit.dart';
@@ -10,9 +11,9 @@ import '../../data/models/activity.dart';
 import '../../data/models/archery_models.dart';
 import '../../data/models/target_face.dart';
 import '../../data/repositories/archery_repository.dart';
-import '../../data/services/storage_service.dart';
-import '../common/empty_state.dart';
-import 'package:uuid/uuid.dart';
+import 'widgets/round_list.dart';
+import 'widgets/target_canvas.dart';
+import 'widgets/target_canvas_painters.dart';
 
 class ActivityDetailPage extends StatelessWidget {
   const ActivityDetailPage({super.key, required this.activity});
@@ -40,17 +41,37 @@ class _ActivityDetailView extends StatefulWidget {
 
 class _ActivityDetailViewState extends State<_ActivityDetailView> {
   static const Offset _fingerPlacementOffset = Offset(0, -44);
+  static const double _nudgeStep = 1.5;
 
   Offset? _crosshairPosition;
   Offset? _pendingArrowPosition;
+  Size? _pendingTargetSize;
   String? _highlightedArrowId;
   bool _isTargetExpanded = false;
   bool _showAllRoundsOnTarget = true;
+  Timer? _nudgeSaveTimer;
+  bool _hasPendingNudgeSave = false;
+  late ActivityDetailCubit _detailCubit;
 
   @override
   void initState() {
     super.initState();
     _showAllRoundsOnTarget = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _detailCubit = context.read<ActivityDetailCubit>();
+  }
+
+  @override
+  void dispose() {
+    _nudgeSaveTimer?.cancel();
+    if (_hasPendingNudgeSave) {
+      unawaited(_detailCubit.saveCurrentRounds());
+    }
+    super.dispose();
   }
 
   @override
@@ -77,26 +98,37 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                 ))
             ? null
             : _highlightedArrowId;
+        final latestArrowId = selectedRound?.arrows.isEmpty ?? true
+            ? null
+            : selectedRound!.arrows.first.id;
+        final showNudgeControls =
+            !_showAllRoundsOnTarget && highlightId == latestArrowId;
         return Scaffold(
-          appBar: AppBar(title: Text(state.activity.name)),
-          // floatingActionButton: Column(
-          // mainAxisSize: MainAxisSize.min,
-          // crossAxisAlignment: CrossAxisAlignment.end,
-          // children: [
-          // FloatingActionButton.extended(
-          //   onPressed: () =>
-          //       context.read<ActivityDetailCubit>().addRoundWithPhoto(),
-          //   icon: const Icon(Icons.camera_alt_outlined),
-          //   label: const Text('Add Picture'),
-          // ),
-          // const SizedBox(height: 12),
-          // FloatingActionButton.extended(
-          //   onPressed: () => context.read<ActivityDetailCubit>().addRound(),
-          //   icon: const Icon(Icons.my_location_outlined),
-          //   label: const Text('Add Round'),
-          // ),
-          // ],
-          // ),
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(state.activity.name),
+                Text(
+                  _activityMetaLabel(state.activity),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Undo last arrow',
+                onPressed: selectedRound?.arrows.isEmpty ?? true
+                    ? null
+                    : _undoLastArrow,
+                icon: const Icon(Icons.undo),
+              ),
+            ],
+          ),
           body: SafeArea(
             child: Stack(
               children: [
@@ -135,10 +167,20 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                             highlightedArrowId: highlightId,
                                             onArrowTap: _handleArrowTap,
                                             onArrowLongPress: (arrow) =>
-                                                _handleArrowLongPress(
+                                                _showArrowActions(
                                                   context,
                                                   selectedRound,
                                                   arrow,
+                                                ),
+                                            onPreviousArrow: () =>
+                                                _selectAdjacentArrow(
+                                                  selectedRound,
+                                                  -1,
+                                                ),
+                                            onNextArrow: () =>
+                                                _selectAdjacentArrow(
+                                                  selectedRound,
+                                                  1,
                                                 ),
                                           )
                                         : const _NoRoundHeader());
@@ -199,6 +241,28 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                                               },
                                         ),
                                       ),
+                                      if (showNudgeControls) ...[
+                                        const SizedBox(height: 8),
+                                        _SelectedArrowControls(
+                                          onRetract: _retractHighlightedArrow,
+                                          onNudgeUp: () =>
+                                              _nudgeHighlightedArrow(
+                                                const Offset(0, -_nudgeStep),
+                                              ),
+                                          onNudgeDown: () =>
+                                              _nudgeHighlightedArrow(
+                                                const Offset(0, _nudgeStep),
+                                              ),
+                                          onNudgeLeft: () =>
+                                              _nudgeHighlightedArrow(
+                                                const Offset(-_nudgeStep, 0),
+                                              ),
+                                          onNudgeRight: () =>
+                                              _nudgeHighlightedArrow(
+                                                const Offset(_nudgeStep, 0),
+                                              ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                   Positioned(
@@ -237,7 +301,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                       const Divider(height: 1),
                       Expanded(
                         flex: 5,
-                        child: _RoundList(
+                        child: RoundList(
                           showAllRoundsOnTarget: _showAllRoundsOnTarget,
                           onAllRoundsToggle: (value) {
                             setState(() {
@@ -267,44 +331,76 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
                     child: Container(
                       color: Colors.black.withValues(alpha: 0.55),
                       child: SafeArea(
-                        child: Stack(
+                        child: Column(
                           children: [
-                            Center(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final targetSize = _expandedTargetSize(
-                                    state.activity.targetFaceType,
-                                    constraints,
-                                  );
-                                  return _buildTargetCanvas(
-                                    targetSize,
-                                    state,
-                                    highlightId,
-                                    _showAllRoundsOnTarget,
-                                  );
-                                },
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final targetSize = _expandedTargetSize(
+                                          state.activity.targetFaceType,
+                                          constraints,
+                                        );
+                                        return _buildTargetCanvas(
+                                          targetSize,
+                                          state,
+                                          highlightId,
+                                          _showAllRoundsOnTarget,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 12,
+                                    right: 12,
+                                    child: FloatingActionButton.small(
+                                      heroTag: 'close_target',
+                                      onPressed: () => setState(
+                                        () => _isTargetExpanded = false,
+                                      ),
+                                      child: const Icon(Icons.close_fullscreen),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 16,
+                                    bottom: 16,
+                                    child: FloatingActionButton.extended(
+                                      onPressed: _addRoundAndFocus,
+                                      icon: const Icon(
+                                        Icons.my_location_outlined,
+                                      ),
+                                      label: const Text('Add Round'),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: FloatingActionButton.small(
-                                heroTag: 'close_target',
-                                onPressed: () =>
-                                    setState(() => _isTargetExpanded = false),
-                                child: const Icon(Icons.close_fullscreen),
+                            if (showNudgeControls)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  12,
+                                ),
+                                child: _SelectedArrowControls(
+                                  onRetract: _retractHighlightedArrow,
+                                  onNudgeUp: () => _nudgeHighlightedArrow(
+                                    const Offset(0, -_nudgeStep),
+                                  ),
+                                  onNudgeDown: () => _nudgeHighlightedArrow(
+                                    const Offset(0, _nudgeStep),
+                                  ),
+                                  onNudgeLeft: () => _nudgeHighlightedArrow(
+                                    const Offset(-_nudgeStep, 0),
+                                  ),
+                                  onNudgeRight: () => _nudgeHighlightedArrow(
+                                    const Offset(_nudgeStep, 0),
+                                  ),
+                                ),
                               ),
-                            ),
-
-                            Positioned(
-                              right: 16,
-                              bottom: 16,
-                              child: FloatingActionButton.extended(
-                                onPressed: _addRoundAndFocus,
-                                icon: const Icon(Icons.my_location_outlined),
-                                label: const Text('Add Round'),
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -318,12 +414,25 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     );
   }
 
+  String _activityMetaLabel(Activity activity) {
+    final distance = activity.distanceMeters == null
+        ? null
+        : '${activity.distanceMeters}m';
+    return [
+      if (distance != null) distance,
+      activity.targetFaceType.label,
+    ].join(' - ');
+  }
+
   Future<void> _addRoundAndFocus() async {
     await context.read<ActivityDetailCubit>().addRound();
     if (!mounted) return;
     setState(() {
       _showAllRoundsOnTarget = false;
       _highlightedArrowId = null;
+      _crosshairPosition = null;
+      _pendingArrowPosition = null;
+      _pendingTargetSize = null;
     });
   }
 
@@ -339,17 +448,80 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     setState(() {
       _crosshairPosition = position;
       _pendingArrowPosition = position;
+      _pendingTargetSize = targetSize;
     });
   }
 
-  void _commitArrow(ActivityDetailCubit cubit, Size targetSize) {
+  Future<void> _commitPendingArrow() async {
     final position = _pendingArrowPosition;
-    if (position == null) {
+    final targetSize = _pendingTargetSize;
+    if (position == null || targetSize == null) {
       _hideCrosshair();
       return;
     }
     _hideCrosshair();
-    cubit.addArrow(position, targetSize);
+    final cubit = context.read<ActivityDetailCubit>();
+    final addedArrow = await cubit.addArrow(position, targetSize);
+    if (!mounted || addedArrow == null) return;
+    setState(() {
+      _showAllRoundsOnTarget = false;
+      _highlightedArrowId = addedArrow.id;
+    });
+  }
+
+  Future<void> _nudgeHighlightedArrow(Offset delta) async {
+    final round = context.read<ActivityDetailCubit>().state.selectedRound;
+    final arrowId = _highlightedArrowId;
+    if (round == null || arrowId == null) return;
+    await context.read<ActivityDetailCubit>().nudgeArrow(
+      roundId: round.id,
+      arrowId: arrowId,
+      delta: delta,
+      persist: false,
+    );
+    _scheduleNudgeSave();
+  }
+
+  void _scheduleNudgeSave() {
+    _hasPendingNudgeSave = true;
+    _nudgeSaveTimer?.cancel();
+    _nudgeSaveTimer = Timer(
+      const Duration(milliseconds: 350),
+      _flushPendingNudgeSave,
+    );
+  }
+
+  void _flushPendingNudgeSave() {
+    if (!_hasPendingNudgeSave) return;
+    _hasPendingNudgeSave = false;
+    _nudgeSaveTimer?.cancel();
+    _nudgeSaveTimer = null;
+    unawaited(_detailCubit.saveCurrentRounds());
+  }
+
+  Future<void> _retractHighlightedArrow() async {
+    final round = context.read<ActivityDetailCubit>().state.selectedRound;
+    final arrowId = _highlightedArrowId;
+    if (round == null || arrowId == null) return;
+
+    await context.read<ActivityDetailCubit>().removeArrow(round.id, arrowId);
+    if (!mounted) return;
+    setState(() {
+      _highlightedArrowId = null;
+      _crosshairPosition = null;
+      _pendingArrowPosition = null;
+      _pendingTargetSize = null;
+    });
+  }
+
+  Future<void> _undoLastArrow() async {
+    final removedArrow = await context
+        .read<ActivityDetailCubit>()
+        .undoLastArrow();
+    if (!mounted || removedArrow == null) return;
+    if (_highlightedArrowId == removedArrow.id) {
+      setState(() => _highlightedArrowId = null);
+    }
   }
 
   void _hideCrosshair() {
@@ -359,6 +531,7 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     setState(() {
       _crosshairPosition = null;
       _pendingArrowPosition = null;
+      _pendingTargetSize = null;
     });
   }
 
@@ -374,11 +547,93 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     });
   }
 
+  void _selectAdjacentArrow(ArcheryRound round, int direction) {
+    if (round.arrows.isEmpty) return;
+    final currentIndex = round.arrows.indexWhere(
+      (arrow) => arrow.id == _highlightedArrowId,
+    );
+    final baseIndex = currentIndex == -1 ? 0 : currentIndex;
+    final nextIndex = (baseIndex + direction) % round.arrows.length;
+    final normalizedIndex = nextIndex < 0 ? round.arrows.length - 1 : nextIndex;
+    setState(() {
+      _highlightedArrowId = round.arrows[normalizedIndex].id;
+    });
+  }
+
   String _formatArrowScore(ArrowHit arrow) {
     return arrow.isX ? 'X (10)' : '${arrow.score}';
   }
 
-  Future<void> _handleArrowLongPress(
+  Future<void> _showArrowActions(
+    BuildContext context,
+    ArcheryRound round,
+    ArrowHit arrow,
+  ) async {
+    _handleArrowTap(arrow);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text('Edit score (${_formatArrowScore(arrow)})'),
+                onTap: () => Navigator.of(sheetContext).pop('score'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Delete arrow'),
+                textColor: Colors.redAccent,
+                iconColor: Colors.redAccent,
+                onTap: () => Navigator.of(sheetContext).pop('delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!context.mounted || action == null) return;
+    switch (action) {
+      case 'score':
+        await _editArrowScore(context, round, arrow);
+        break;
+      case 'delete':
+        await _deleteArrow(context, round, arrow);
+        break;
+    }
+  }
+
+  Future<void> _editArrowScore(
+    BuildContext context,
+    ArcheryRound round,
+    ArrowHit arrow,
+  ) async {
+    final score = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return SimpleDialog(
+          title: const Text('Arrow score'),
+          children: [
+            for (final value in [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(dialogContext).pop(value),
+                child: Text(value == 0 ? 'Miss (0)' : '$value pts'),
+              ),
+          ],
+        );
+      },
+    );
+    if (!context.mounted || score == null) return;
+    await context.read<ActivityDetailCubit>().updateArrowScore(
+      roundId: round.id,
+      arrowId: arrow.id,
+      newScore: score,
+    );
+  }
+
+  Future<void> _deleteArrow(
     BuildContext context,
     ArcheryRound round,
     ArrowHit arrow,
@@ -411,7 +666,10 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     if (!mounted) return;
     if (_highlightedArrowId == arrow.id) {
       setState(() {
-        _highlightedArrowId = null;
+        final remaining = round.arrows
+            .where((candidate) => candidate.id != arrow.id)
+            .toList();
+        _highlightedArrowId = remaining.isEmpty ? null : remaining.first.id;
       });
     }
   }
@@ -422,13 +680,12 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
     String? highlightId,
     bool showAllRounds,
   ) {
-    final cubit = context.read<ActivityDetailCubit>();
     final selectedRoundId = state.selectedRoundId;
     final arrows = showAllRounds
         ? state.rounds
               .expand(
                 (round) => round.arrows.map(
-                  (arrow) => _TargetArrow(
+                  (arrow) => TargetCanvasArrow(
                     arrow: arrow,
                     isSelectedRound: round.id == selectedRoundId,
                   ),
@@ -438,52 +695,26 @@ class _ActivityDetailViewState extends State<_ActivityDetailView> {
         : state.selectedRound?.arrows
                   .map(
                     (arrow) =>
-                        _TargetArrow(arrow: arrow, isSelectedRound: true),
+                        TargetCanvasArrow(arrow: arrow, isSelectedRound: true),
                   )
                   .toList() ??
-              const <_TargetArrow>[];
+              const <TargetCanvasArrow>[];
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (details) =>
-          _updateCrosshair(details.localPosition, targetSize),
-      onTapUp: (details) {
-        _updateCrosshair(details.localPosition, targetSize);
-        _commitArrow(cubit, targetSize);
+    return TargetCanvas(
+      targetSize: targetSize,
+      arrows: arrows,
+      targetFaceType: state.activity.targetFaceType,
+      highlightedArrowId: highlightId,
+      crosshairPosition: _crosshairPosition,
+      onTapPreview: (position) => _updateCrosshair(position, targetSize),
+      onTapCommit: (position) {
+        _updateCrosshair(position, targetSize);
+        _commitPendingArrow();
       },
-      onTapCancel: _hideCrosshair,
-      onPanStart: (details) => _updateCrosshair(
-        details.localPosition,
-        targetSize,
-        offsetFromFinger: true,
-      ),
-      onPanUpdate: (details) => _updateCrosshair(
-        details.localPosition,
-        targetSize,
-        offsetFromFinger: true,
-      ),
-      onPanEnd: (_) => _commitArrow(cubit, targetSize),
-      onPanCancel: _hideCrosshair,
-      child: SizedBox(
-        width: targetSize.width,
-        height: targetSize.height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CustomPaint(
-              painter: _ArcheryTargetPainter(
-                arrows: arrows,
-                highlightedArrowId: highlightId,
-                targetFaceType: state.activity.targetFaceType,
-              ),
-            ),
-            if (_crosshairPosition != null)
-              CustomPaint(
-                painter: _CrosshairPainter(position: _crosshairPosition!),
-              ),
-          ],
-        ),
-      ),
+      onDragPreview: (position) =>
+          _updateCrosshair(position, targetSize, offsetFromFinger: true),
+      onDragCommit: _commitPendingArrow,
+      onCancel: _hideCrosshair,
     );
   }
 
@@ -542,6 +773,8 @@ class _RoundHeader extends StatelessWidget {
     required this.highlightedArrowId,
     required this.onArrowTap,
     required this.onArrowLongPress,
+    required this.onPreviousArrow,
+    required this.onNextArrow,
   });
 
   final ArcheryRound round;
@@ -549,6 +782,8 @@ class _RoundHeader extends StatelessWidget {
   final String? highlightedArrowId;
   final void Function(ArrowHit arrow) onArrowTap;
   final void Function(ArrowHit arrow) onArrowLongPress;
+  final VoidCallback onPreviousArrow;
+  final VoidCallback onNextArrow;
 
   @override
   Widget build(BuildContext context) {
@@ -563,11 +798,31 @@ class _RoundHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Round $roundIndex - ${round.totalScore} pts',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Round $roundIndex - ${round.totalScore} pts',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (round.arrows.isNotEmpty) ...[
+              IconButton(
+                tooltip: 'Previous arrow',
+                visualDensity: VisualDensity.compact,
+                onPressed: onPreviousArrow,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              IconButton(
+                tooltip: 'Next arrow',
+                visualDensity: VisualDensity.compact,
+                onPressed: onNextArrow,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 4),
         if (sortedArrows.isNotEmpty)
@@ -606,10 +861,226 @@ class _RoundHeader extends StatelessWidget {
           )
         else
           Text(
-            'Tap anywhere on the target to log an arrow (max 6).',
+            'Tap the target to add an arrow. Select an arrow to fine-tune.',
             style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54),
           ),
       ],
+    );
+  }
+}
+
+class _SelectedArrowControls extends StatelessWidget {
+  const _SelectedArrowControls({
+    required this.onRetract,
+    required this.onNudgeUp,
+    required this.onNudgeDown,
+    required this.onNudgeLeft,
+    required this.onNudgeRight,
+  });
+
+  final VoidCallback onRetract;
+  final VoidCallback onNudgeUp;
+  final VoidCallback onNudgeDown;
+  final VoidCallback onNudgeLeft;
+  final VoidCallback onNudgeRight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(12),
+      color: colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton.filledTonal(
+              tooltip: 'Retract arrow',
+              onPressed: onRetract,
+              style: IconButton.styleFrom(
+                fixedSize: const Size(48, 48),
+                foregroundColor: colorScheme.error,
+                backgroundColor: colorScheme.errorContainer,
+              ),
+              icon: const Icon(Icons.close),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 84,
+              child: VerticalDivider(
+                width: 1,
+                color: colorScheme.outlineVariant,
+              ),
+            ),
+            const SizedBox(width: 10),
+            _NudgePad(
+              onUp: onNudgeUp,
+              onDown: onNudgeDown,
+              onLeft: onNudgeLeft,
+              onRight: onNudgeRight,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NudgePad extends StatelessWidget {
+  const _NudgePad({
+    required this.onUp,
+    required this.onDown,
+    required this.onLeft,
+    required this.onRight,
+  });
+
+  final VoidCallback onUp;
+  final VoidCallback onDown;
+  final VoidCallback onLeft;
+  final VoidCallback onRight;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 152,
+      height: 152,
+      child: GridView.count(
+        crossAxisCount: 3,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
+        children: [
+          const SizedBox.shrink(),
+          _NudgeButton(
+            tooltip: 'Nudge up',
+            icon: Icons.keyboard_arrow_up,
+            onPressed: onUp,
+          ),
+          const SizedBox.shrink(),
+          _NudgeButton(
+            tooltip: 'Nudge left',
+            icon: Icons.keyboard_arrow_left,
+            onPressed: onLeft,
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            child: Icon(
+              Icons.adjust,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          _NudgeButton(
+            tooltip: 'Nudge right',
+            icon: Icons.keyboard_arrow_right,
+            onPressed: onRight,
+          ),
+          const SizedBox.shrink(),
+          _NudgeButton(
+            tooltip: 'Nudge down',
+            icon: Icons.keyboard_arrow_down,
+            onPressed: onDown,
+          ),
+          const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+}
+
+class _NudgeButton extends StatefulWidget {
+  const _NudgeButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  State<_NudgeButton> createState() => _NudgeButtonState();
+}
+
+class _NudgeButtonState extends State<_NudgeButton> {
+  Timer? _holdDelayTimer;
+  Timer? _repeatTimer;
+  bool _isPointerDown = false;
+
+  void _nudge() {
+    HapticFeedback.selectionClick();
+    widget.onPressed();
+  }
+
+  void _handlePointerDown() {
+    _isPointerDown = true;
+    _holdDelayTimer?.cancel();
+    _holdDelayTimer = Timer(const Duration(milliseconds: 260), () {
+      if (!_isPointerDown) return;
+      _nudge();
+      _startRepeat();
+    });
+  }
+
+  void _startRepeat() {
+    _repeatTimer?.cancel();
+    _repeatTimer = Timer.periodic(
+      const Duration(milliseconds: 80),
+      (_) => widget.onPressed(),
+    );
+  }
+
+  void _handlePointerUp() {
+    _isPointerDown = false;
+    _stopRepeat();
+  }
+
+  void _stopRepeat() {
+    _holdDelayTimer?.cancel();
+    _holdDelayTimer = null;
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopRepeat();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: widget.tooltip,
+      child: Listener(
+        onPointerDown: (_) => _handlePointerDown(),
+        onPointerUp: (_) => _handlePointerUp(),
+        onPointerCancel: (_) => _handlePointerUp(),
+        child: Material(
+          color: colorScheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: _nudge,
+            child: SizedBox.square(
+              dimension: 48,
+              child: Icon(
+                widget.icon,
+                size: 30,
+                color: colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -726,710 +1197,4 @@ class _ArrowScorePill extends StatelessWidget {
       ),
     );
   }
-}
-
-class _RoundList extends StatefulWidget {
-  const _RoundList({
-    required this.showAllRoundsOnTarget,
-    required this.onAllRoundsToggle,
-    required this.onRoundSelected,
-  });
-
-  final bool showAllRoundsOnTarget;
-  final ValueChanged<bool> onAllRoundsToggle;
-  final VoidCallback onRoundSelected;
-
-  @override
-  State<_RoundList> createState() => _RoundListState();
-}
-
-class _RoundListState extends State<_RoundList> {
-  bool _isSummaryExpanded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _isSummaryExpanded = widget.showAllRoundsOnTarget;
-  }
-
-  @override
-  void didUpdateWidget(covariant _RoundList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.showAllRoundsOnTarget != widget.showAllRoundsOnTarget) {
-      _isSummaryExpanded = widget.showAllRoundsOnTarget;
-    }
-  }
-
-  Future<void> _handlePhotoAction(
-    BuildContext context,
-    ActivityDetailCubit cubit,
-    ArcheryRound round,
-  ) async {
-    final photoPath = round.photoPath;
-    if (photoPath == null) {
-      await cubit.attachPhoto(round.id);
-      return;
-    }
-
-    final file = File(photoPath);
-    if (!file.existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Photo not found. Please capture a new one.'),
-          duration: Duration(milliseconds: 300),
-        ),
-      );
-      await cubit.attachPhoto(round.id);
-      return;
-    }
-
-    final shouldReplace =
-        await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: const Text('Round photo'),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 360,
-                  maxHeight: 480,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: InteractiveViewer(
-                    child: Image.file(file, fit: BoxFit.contain),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Close'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('Replace photo'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-
-    if (shouldReplace) {
-      await cubit.attachPhoto(round.id);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ActivityDetailCubit, ActivityDetailState>(
-      builder: (context, state) {
-        if (state.rounds.isEmpty) {
-          return const Center(
-            child: EmptyState(
-              icon: Icons.flag_outlined,
-              title: 'No rounds yet',
-              message: 'Tap the Add Round button to start a new set.',
-            ),
-          );
-        }
-
-        final cubit = context.read<ActivityDetailCubit>();
-        final rounds = state.rounds;
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: rounds.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _AllRoundsSummaryCard(
-                rounds: rounds,
-                isExpanded: _isSummaryExpanded,
-                onToggle: () {
-                  final next = !_isSummaryExpanded;
-                  setState(() => _isSummaryExpanded = next);
-                  widget.onAllRoundsToggle(next);
-                },
-              );
-            }
-            final round = rounds[index - 1];
-            final isSelected = round.id == state.selectedRoundId;
-            final roundNumber = index;
-
-            return AnimatedScale(
-              duration: const Duration(milliseconds: 200),
-              scale: isSelected ? 1.02 : 1.0,
-              child: Card(
-                color: isSelected
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withValues(alpha: 0.45)
-                    : null,
-                child: ListTile(
-                  onTap: () {
-                    setState(() => _isSummaryExpanded = false);
-                    widget.onAllRoundsToggle(false);
-                    widget.onRoundSelected();
-                    cubit.selectRound(round.id);
-                  },
-                  leading: round.photoPath != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(round.photoPath!),
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : CircleAvatar(child: Text('$roundNumber')),
-                  title: Text('Round $roundNumber'),
-                  subtitle: Text(
-                    'Score: ${round.totalScore} - Arrows: ${round.arrows.length}',
-                  ),
-                  trailing: Wrap(
-                    spacing: 8,
-                    children: [
-                      IconButton(
-                        tooltip: round.photoPath == null
-                            ? 'Attach photo'
-                            : 'View photo',
-                        onPressed: () =>
-                            _handlePhotoAction(context, cubit, round),
-                        icon: const Icon(Icons.camera_alt_outlined),
-                      ),
-                      IconButton(
-                        tooltip: 'Delete round',
-                        onPressed: () => cubit.deleteRound(round.id),
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _AllRoundsSummaryCard extends StatelessWidget {
-  const _AllRoundsSummaryCard({
-    required this.rounds,
-    required this.isExpanded,
-    required this.onToggle,
-  });
-
-  final List<ArcheryRound> rounds;
-  final bool isExpanded;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    if (rounds.isEmpty) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
-    final totalRounds = rounds.length;
-    final totalScore = rounds.fold<int>(
-      0,
-      (sum, round) => sum + round.totalScore,
-    );
-    final arrowCount = rounds.fold<int>(
-      0,
-      (sum, round) => sum + round.arrows.length,
-    );
-    final xCount = rounds.fold<int>(
-      0,
-      (sum, round) => sum + round.arrows.where((a) => a.isX).length,
-    );
-    final tenCount = rounds.fold<int>(
-      0,
-      (sum, round) =>
-          sum + round.arrows.where((a) => a.score == 10 && !a.isX).length,
-    );
-    final totalTenCount = xCount + tenCount;
-
-    // final averageRound = totalRounds == 0
-    //     ? 0.0
-    //     : totalScore.toDouble() / totalRounds;
-    final averageArrow = arrowCount == 0
-        ? 0.0
-        : totalScore.toDouble() / arrowCount;
-    final tenRate = arrowCount == 0
-        ? 0.0
-        : (tenCount * 100.0) / arrowCount.toDouble();
-
-    var bestScore = 0.0;
-    var bestRoundIndex = 0;
-    var worstScore = rounds.first.totalScore.toDouble();
-    var worstRoundIndex = 0;
-
-    for (var i = 0; i < rounds.length; i++) {
-      final roundScore = rounds[i].averageScore;
-      if (roundScore >= bestScore) {
-        bestScore = roundScore;
-        bestRoundIndex = i;
-      }
-      if (roundScore <= worstScore && rounds[i].arrows.isNotEmpty) {
-        worstScore = roundScore;
-        worstRoundIndex = i;
-      }
-    }
-
-    return Card(
-      elevation: 1.5,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.insights_outlined),
-                  const SizedBox(width: 8),
-                  Text(
-                    'All rounds summary',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _SummaryStatChip(
-                    label: 'Total score',
-                    value: '$totalScore pts',
-                  ),
-                  _SummaryStatChip(label: 'X hits', value: '$xCount'),
-                  _SummaryStatChip(label: 'X+10', value: '$totalTenCount'),
-                  _SummaryStatChip(
-                    label: 'Avg / arrow',
-                    value: averageArrow.toStringAsFixed(2),
-                  ),
-                  _SummaryStatChip(label: 'Arrows', value: '$arrowCount'),
-                ],
-              ),
-              if (isExpanded) ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                _DetailRow(label: 'Rounds logged', value: '$totalRounds'),
-                _DetailRow(
-                  label: '10s hit rate',
-                  value:
-                      '${tenRate.toStringAsFixed(1)}% ($tenCount / $arrowCount)',
-                ),
-                _DetailRow(label: 'X hits', value: '$xCount'),
-                _DetailRow(label: 'X+10', value: '$totalTenCount'),
-                _DetailRow(
-                  label: 'Best round',
-                  value:
-                      'R${bestRoundIndex + 1} / ${bestScore.toStringAsFixed(2)} pts',
-                ),
-                _DetailRow(
-                  label: 'Lowest round',
-                  value:
-                      'R${worstRoundIndex + 1} / ${worstScore.toStringAsFixed(2)} pts',
-                ),
-                _DetailRow(
-                  label: 'Score spread',
-                  value:
-                      '${rounds[bestRoundIndex].totalScore - rounds[worstRoundIndex].totalScore} pts',
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryStatChip extends StatelessWidget {
-  const _SummaryStatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.18),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TargetArrow {
-  const _TargetArrow({required this.arrow, required this.isSelectedRound});
-
-  final ArrowHit arrow;
-  final bool isSelectedRound;
-}
-
-class _ArcheryTargetPainter extends CustomPainter {
-  _ArcheryTargetPainter({
-    required this.arrows,
-    this.highlightedArrowId,
-    required this.targetFaceType,
-  });
-
-  final List<_TargetArrow> arrows;
-  final String? highlightedArrowId;
-  final TargetFaceType targetFaceType;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..style = PaintingStyle.fill;
-    final spots = targetFaceType.layoutSpots(size);
-    if (spots.isEmpty) return;
-
-    final rings = _ringsFor(targetFaceType);
-    final ringCount = rings.length;
-
-    for (final spot in spots) {
-      paint
-        ..style = PaintingStyle.fill
-        ..strokeWidth = 1.0;
-      for (var i = ringCount; i >= 1; i--) {
-        final ringRadius = spot.radius * (i / ringCount);
-        paint.color = rings[i - 1];
-        canvas.drawCircle(spot.center, ringRadius, paint);
-      }
-
-      paint
-        ..color = Colors.black54
-        ..strokeWidth = 1.5
-        ..style = PaintingStyle.stroke;
-      canvas.drawCircle(spot.center, spot.radius, paint);
-
-      final xRatio = _xRingRatio(targetFaceType);
-      if (xRatio != null) {
-        paint
-          ..color = Colors.black45
-          ..strokeWidth = 1.0
-          ..style = PaintingStyle.stroke;
-        canvas.drawCircle(spot.center, spot.radius * xRatio, paint);
-      }
-    }
-
-    for (final targetArrow in arrows) {
-      final arrow = targetArrow.arrow;
-      final isHighlighted = arrow.id == highlightedArrowId;
-      final spotIndex = arrow.targetIndex.clamp(0, spots.length - 1);
-      final spot = spots[spotIndex];
-      final scale = spot.radius / ArcheryRepository.targetRadius;
-      final arrowPaint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = isHighlighted
-            ? Colors.orange
-            : targetArrow.isSelectedRound
-            ? Colors.deepPurple
-            : Colors.deepPurple.withValues(alpha: 0.55);
-      final absolute = spot.center + arrow.position * scale;
-      canvas.drawCircle(absolute, isHighlighted ? 8 : 6, arrowPaint);
-      if (isHighlighted) {
-        final ring = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..color = Colors.orangeAccent.withValues(alpha: 0.9);
-        canvas.drawCircle(absolute, 14, ring);
-      }
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: arrow.isX ? 'X' : '${arrow.score}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout(minWidth: 0, maxWidth: 24);
-      textPainter.paint(
-        canvas,
-        absolute.translate(-textPainter.width / 2, -textPainter.height / 2),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ArcheryTargetPainter oldDelegate) {
-    return oldDelegate.arrows != arrows ||
-        oldDelegate.highlightedArrowId != highlightedArrowId ||
-        oldDelegate.targetFaceType != targetFaceType;
-  }
-
-  List<Color> _ringsFor(TargetFaceType type) {
-    switch (type) {
-      case TargetFaceType.half80cmSixRing:
-        return [
-          Colors.yellow,
-          Colors.yellow.shade700,
-          Colors.red,
-          Colors.red.shade900,
-          Colors.blue,
-        ];
-      case TargetFaceType.verticalTripleSixRing:
-        return [
-          Colors.yellow,
-          Colors.yellow.shade700,
-          Colors.red,
-          Colors.red.shade900,
-          Colors.blue,
-        ];
-      case TargetFaceType.triangularTripleSixRing:
-        return [
-          Colors.yellow,
-          Colors.yellow.shade700,
-          Colors.red,
-          Colors.red.shade900,
-          Colors.blue,
-        ];
-      case TargetFaceType.fullTenRing:
-        return [
-          Colors.yellow,
-          Colors.yellow.shade700,
-          Colors.red,
-          Colors.red.shade900,
-          Colors.blue,
-          Colors.blue.shade900,
-          Colors.black,
-          Colors.black87,
-          Colors.white,
-          Colors.white,
-        ];
-    }
-  }
-
-  double? _xRingRatio(TargetFaceType type) {
-    switch (type) {
-      case TargetFaceType.fullTenRing:
-        return 0.05;
-      case TargetFaceType.half80cmSixRing:
-      case TargetFaceType.verticalTripleSixRing:
-      case TargetFaceType.triangularTripleSixRing:
-        return 0.10;
-    }
-  }
-}
-
-class _CrosshairPainter extends CustomPainter {
-  const _CrosshairPainter({required this.position});
-
-  final Offset position;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final guidePaint = Paint()
-      ..color = Colors.orangeAccent.withValues(alpha: 0.8)
-      ..strokeWidth = 1.5;
-    canvas.drawLine(
-      Offset(position.dx, 0),
-      Offset(position.dx, size.height),
-      guidePaint,
-    );
-    canvas.drawLine(
-      Offset(0, position.dy),
-      Offset(size.width, position.dy),
-      guidePaint,
-    );
-
-    final circlePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = Colors.orangeAccent;
-    canvas.drawCircle(position, 12, circlePaint);
-
-    final dotPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = Colors.orangeAccent;
-    canvas.drawCircle(position, 3, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CrosshairPainter oldDelegate) {
-    return oldDelegate.position != position;
-  }
-}
-
-class ActivityDetailPreview extends StatelessWidget {
-  const ActivityDetailPreview({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final tempDir = Directory.systemTemp.createTempSync('archery_preview_');
-    final storageService = StorageService(overrideRoot: tempDir);
-    final archeryRepository = ArcheryRepository(storageService: storageService);
-    final mockActivity = Activity(
-      id: 'mock',
-      name: 'Mock Archery Session',
-      createdAt: DateTime.now(),
-      directoryPath: '.',
-      photoCount: 0,
-      coverPhotoPath: null,
-      targetFaceType: TargetFaceType.fullTenRing,
-    );
-
-    return MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider.value(value: storageService),
-        RepositoryProvider.value(value: archeryRepository),
-      ],
-      child: FutureBuilder<void>(
-        future: _seedMockData(
-          storageService,
-          archeryRepository,
-          mockActivity.id,
-        ),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ActivityDetailPage(activity: mockActivity);
-        },
-      ),
-    );
-  }
-}
-
-Future<void> _seedMockData(
-  StorageService storageService,
-  ArcheryRepository repository,
-  String activityId,
-) async {
-  await storageService.ensureActivityDirectory(activityId);
-  final existing = await repository.loadRounds(activityId);
-  if (existing.isNotEmpty) return;
-
-  final now = DateTime.now();
-  final uuid = const Uuid();
-
-  final roundA = ArcheryRound.create().copyWith(
-    arrows: [
-      ArrowHit(
-        id: uuid.v4(),
-        position: Offset.zero,
-        score: 10,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-      ArrowHit(
-        id: uuid.v4(),
-        position: const Offset(24, -12),
-        score: 9,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-      ArrowHit(
-        id: uuid.v4(),
-        position: const Offset(-48, 30),
-        score: 7,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-    ],
-  );
-
-  final roundB = ArcheryRound.create().copyWith(
-    arrows: [
-      ArrowHit(
-        id: uuid.v4(),
-        position: const Offset(65, -40),
-        score: 5,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-      ArrowHit(
-        id: uuid.v4(),
-        position: const Offset(-90, -20),
-        score: 4,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-      ArrowHit(
-        id: uuid.v4(),
-        position: const Offset(140, 30),
-        score: 1,
-        createdAt: now,
-        targetIndex: 0,
-      ),
-    ],
-  );
-
-  await repository.saveRounds(activityId, [roundA, roundB]);
 }

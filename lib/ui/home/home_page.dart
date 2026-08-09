@@ -139,7 +139,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _showCreateSheet(BuildContext context) async {
     final activityBloc = context.read<ActivityBloc>();
-    final settings = context.read<SettingsCubit>().state.settings;
+    final settingsCubit = context.read<SettingsCubit>();
+    final settings = settingsCubit.state.settings;
     final defaultName = Utils.formatActivityName(
       settings.defaultActivityNameFormat,
     );
@@ -163,9 +164,13 @@ class _HomePageState extends State<HomePage> {
                   final setup = await showActivitySetupDialog(
                     context,
                     defaultName: defaultName,
+                    defaultDistanceMeters: settings.defaultDistanceMeters,
                     confirmLabel: 'Create',
                   );
                   if (!context.mounted || setup == null) return;
+                  await settingsCubit.rememberDefaultDistance(
+                    setup.distanceMeters,
+                  );
                   activityBloc.add(
                     ActivityCreated(
                       setup.name,
@@ -186,9 +191,13 @@ class _HomePageState extends State<HomePage> {
                   final setup = await showActivitySetupDialog(
                     context,
                     defaultName: defaultName,
+                    defaultDistanceMeters: settings.defaultDistanceMeters,
                     confirmLabel: 'Start capture',
                   );
                   if (!context.mounted || setup == null) return;
+                  await settingsCubit.rememberDefaultDistance(
+                    setup.distanceMeters,
+                  );
                   activityBloc.add(
                     ActivityQuickCaptured(
                       setup.name,

@@ -13,6 +13,7 @@ class SettingsRepository {
 
   static const _themeKey = 'settings_theme_mode';
   static const _defaultNameKey = 'settings_default_name';
+  static const _defaultDistanceKey = 'settings_default_distance_meters';
   static const _storagePathKey = 'settings_storage_path';
 
   Future<AppSettings> loadSettings() async {
@@ -29,6 +30,7 @@ class SettingsRepository {
       themeMode: themeMode,
       defaultActivityNameFormat:
           prefs.getString(_defaultNameKey) ?? 'Event {date}',
+      defaultDistanceMeters: prefs.getInt(_defaultDistanceKey) ?? 70,
       storagePath: prefs.getString(_storagePathKey) ?? storageDir.path,
       version: version,
     );
@@ -42,6 +44,11 @@ class SettingsRepository {
   Future<void> updateDefaultNaming(String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_defaultNameKey, value);
+  }
+
+  Future<void> updateDefaultDistance(int meters) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_defaultDistanceKey, meters);
   }
 
   Future<String> updateStoragePath(String path) async {

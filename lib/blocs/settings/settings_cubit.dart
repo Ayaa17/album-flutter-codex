@@ -71,6 +71,40 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
+  Future<void> updateDefaultDistance(int meters) async {
+    emit(state.copyWith(status: SettingsStatus.loading, message: null));
+    try {
+      await _repository.updateDefaultDistance(meters);
+      emit(
+        state.copyWith(
+          settings: state.settings.copyWith(defaultDistanceMeters: meters),
+          status: SettingsStatus.success,
+          message: 'Default distance updated.',
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: SettingsStatus.failure,
+          message: 'Unable to update default distance.',
+        ),
+      );
+    }
+  }
+
+  Future<void> rememberDefaultDistance(int meters) async {
+    try {
+      await _repository.updateDefaultDistance(meters);
+      emit(
+        state.copyWith(
+          settings: state.settings.copyWith(defaultDistanceMeters: meters),
+          status: SettingsStatus.success,
+          message: null,
+        ),
+      );
+    } catch (_) {}
+  }
+
   Future<void> updateStoragePath(String path) async {
     emit(state.copyWith(status: SettingsStatus.loading, message: null));
     try {

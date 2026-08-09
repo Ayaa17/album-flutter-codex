@@ -239,6 +239,52 @@ class ArcheryRepository {
     return updated;
   }
 
+  Future<List<ArcheryRound>> nudgeArrow({
+    required String activityId,
+    required List<ArcheryRound> rounds,
+    required String roundId,
+    required String arrowId,
+    required Offset delta,
+    required TargetFaceType targetFaceType,
+  }) async {
+    final updated = previewNudgeArrow(
+      rounds: rounds,
+      roundId: roundId,
+      arrowId: arrowId,
+      delta: delta,
+      targetFaceType: targetFaceType,
+    );
+    await saveRounds(activityId, updated);
+    return updated;
+  }
+
+  List<ArcheryRound> previewNudgeArrow({
+    required List<ArcheryRound> rounds,
+    required String roundId,
+    required String arrowId,
+    required Offset delta,
+    required TargetFaceType targetFaceType,
+  }) {
+    return rounds.map((round) {
+      if (round.id != roundId) return round;
+      final updatedArrows = round.arrows.map((arrow) {
+        if (arrow.id != arrowId) return arrow;
+        final nextPosition = arrow.position + delta;
+        final result = _scoreFromDistance(
+          centerDistance: nextPosition.distance,
+          renderRadius: targetRadius,
+          targetFaceType: targetFaceType,
+        );
+        return arrow.createCopy(
+          position: nextPosition,
+          score: result.score,
+          isX: result.isX,
+        );
+      }).toList();
+      return round.copyWith(arrows: updatedArrows);
+    }).toList();
+  }
+
   _ScoreResult _scoreFromDistance({
     required double centerDistance,
     required double renderRadius,

@@ -96,18 +96,22 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   Future<void> _createActivity(BuildContext context) async {
-    final settings = context.read<SettingsCubit>().state.settings;
+    final activityBloc = context.read<ActivityBloc>();
+    final settingsCubit = context.read<SettingsCubit>();
+    final settings = settingsCubit.state.settings;
     final defaultName = Utils.formatActivityName(
       settings.defaultActivityNameFormat,
     );
     final setup = await showActivitySetupDialog(
       context,
       defaultName: defaultName,
+      defaultDistanceMeters: settings.defaultDistanceMeters,
       title: 'Add Activity',
       autofocusName: false,
     );
     if (setup == null || !context.mounted) return;
-    context.read<ActivityBloc>().add(
+    await settingsCubit.rememberDefaultDistance(setup.distanceMeters);
+    activityBloc.add(
       ActivityCreated(
         setup.name,
         setup.targetFaceType,

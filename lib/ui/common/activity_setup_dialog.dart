@@ -18,12 +18,15 @@ class ActivitySetup {
 Future<ActivitySetup?> showActivitySetupDialog(
   BuildContext context, {
   required String defaultName,
+  required int defaultDistanceMeters,
   String title = 'New activity',
   String confirmLabel = 'Create',
   bool autofocusName = true,
 }) {
   final controller = TextEditingController(text: defaultName);
-  final distanceController = TextEditingController(text: '70');
+  final distanceController = TextEditingController(
+    text: '$defaultDistanceMeters',
+  );
   TargetFaceType selected = TargetFaceType.fullTenRing;
   String? distanceErrorText;
 

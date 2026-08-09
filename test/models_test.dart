@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_album_codex/data/models/archery_models.dart';
+import 'package:flutter_album_codex/data/models/app_settings.dart';
 import 'package:flutter_album_codex/data/models/target_face.dart';
 
 void main() {
@@ -89,6 +90,27 @@ void main() {
           lessThanOrEqualTo(size.height + epsilon),
         );
       }
+    });
+  });
+
+  group('AppSettings', () {
+    test('preserves and updates default distance', () {
+      const settings = AppSettings(
+        themeMode: ThemeMode.system,
+        defaultActivityNameFormat: 'Event {date}',
+        defaultDistanceMeters: 70,
+        storagePath: '',
+        version: '1.0.0',
+      );
+
+      final updated = settings.copyWith(defaultDistanceMeters: 18);
+
+      expect(updated.defaultDistanceMeters, 18);
+      expect(
+        updated.defaultActivityNameFormat,
+        settings.defaultActivityNameFormat,
+      );
+      expect(settings.defaultDistanceMeters, 70);
     });
   });
 }

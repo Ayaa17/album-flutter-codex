@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/activity.dart';
+import '../../data/models/archery_models.dart';
 import '../../data/repositories/archery_repository.dart';
 import 'activity_detail_state.dart';
 
@@ -114,19 +115,20 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
     }
   }
 
-  Future<void> addArrow(Offset localPosition, Size targetSize) async {
+  Future<ArrowHit?> addArrow(Offset localPosition, Size targetSize) async {
     final round = state.selectedRound;
     if (round == null) {
       emit(state.copyWith(message: 'Add a round to start recording arrows.'));
-      return;
+      return null;
     }
     if (round.arrows.length >= 6) {
       emit(state.copyWith(message: 'Round already contains 6 arrows.'));
-      return;
+      return null;
     }
 
     emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
     try {
+      final previousArrowIds = round.arrows.map((arrow) => arrow.id).toSet();
       final updated = await _repository.addArrow(
         activityId: state.activity.id,
         rounds: state.rounds,
@@ -135,6 +137,17 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
         targetSize: targetSize,
         targetFaceType: state.activity.targetFaceType,
       );
+      final updatedRound = updated.firstWhere(
+        (candidate) => candidate.id == round.id,
+        orElse: () => round,
+      );
+      ArrowHit? addedArrow;
+      for (final arrow in updatedRound.arrows) {
+        if (!previousArrowIds.contains(arrow.id)) {
+          addedArrow = arrow;
+          break;
+        }
+      }
       emit(
         state.copyWith(
           status: ActivityDetailStatus.success,
@@ -143,6 +156,7 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
           // message: 'Arrow added: ${addedArrow.score} pts.',
         ),
       );
+      return addedArrow;
     } catch (_) {
       emit(
         state.copyWith(
@@ -150,6 +164,43 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
           message: 'Unable to add arrow.',
         ),
       );
+      return null;
+    }
+  }
+
+  Future<ArrowHit?> undoLastArrow() async {
+    final round = state.selectedRound;
+    if (round == null || round.arrows.isEmpty) {
+      emit(state.copyWith(message: 'No arrow to undo.'));
+      return null;
+    }
+
+    final removedArrow = round.arrows.first;
+    emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    try {
+      final updated = await _repository.removeArrow(
+        activityId: state.activity.id,
+        rounds: state.rounds,
+        roundId: round.id,
+        arrowId: removedArrow.id,
+      );
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.success,
+          rounds: updated,
+          selectedRoundId: round.id,
+          message: 'Last arrow undone.',
+        ),
+      );
+      return removedArrow;
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.failure,
+          message: 'Unable to undo last arrow.',
+        ),
+      );
+      return null;
     }
   }
 
@@ -211,6 +262,72 @@ class ActivityDetailCubit extends Cubit<ActivityDetailState> {
         state.copyWith(
           status: ActivityDetailStatus.failure,
           message: 'Unable to update arrow score.',
+        ),
+      );
+    }
+  }
+
+  Future<void> nudgeArrow({
+    required String roundId,
+    required String arrowId,
+    required Offset delta,
+    bool persist = true,
+  }) async {
+    if (!persist) {
+      final updated = _repository.previewNudgeArrow(
+        rounds: state.rounds,
+        roundId: roundId,
+        arrowId: arrowId,
+        delta: delta,
+        targetFaceType: state.activity.targetFaceType,
+      );
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.success,
+          rounds: updated,
+          selectedRoundId: roundId,
+          message: null,
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(status: ActivityDetailStatus.loading, message: null));
+    try {
+      final updated = await _repository.nudgeArrow(
+        activityId: state.activity.id,
+        rounds: state.rounds,
+        roundId: roundId,
+        arrowId: arrowId,
+        delta: delta,
+        targetFaceType: state.activity.targetFaceType,
+      );
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.success,
+          rounds: updated,
+          selectedRoundId: roundId,
+          message: null,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.failure,
+          message: 'Unable to adjust arrow.',
+        ),
+      );
+    }
+  }
+
+  Future<void> saveCurrentRounds() async {
+    try {
+      await _repository.saveRounds(state.activity.id, state.rounds);
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: ActivityDetailStatus.failure,
+          message: 'Unable to save arrow adjustment.',
         ),
       );
     }

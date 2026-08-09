@@ -74,6 +74,7 @@ void main() {
       initialSettings: const AppSettings(
         themeMode: ThemeMode.system,
         defaultActivityNameFormat: 'Event {date}',
+        defaultDistanceMeters: 70,
         storagePath: '',
         version: '0.0.0',
       ),

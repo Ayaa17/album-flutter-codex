@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/settings/settings_cubit.dart';
@@ -64,6 +65,17 @@ class SettingsPage extends StatelessWidget {
                         onTap: () => _editDefaultName(
                           context,
                           settings.defaultActivityNameFormat,
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.straighten_outlined),
+                        title: const Text('Default distance'),
+                        subtitle: Text('${settings.defaultDistanceMeters} m'),
+                        trailing: const Icon(Icons.edit_outlined),
+                        onTap: () => _editDefaultDistance(
+                          context,
+                          settings.defaultDistanceMeters,
                         ),
                       ),
                       const Divider(height: 1),
@@ -187,6 +199,56 @@ class SettingsPage extends StatelessWidget {
     if (!context.mounted) return;
     if (result != null && result.isNotEmpty) {
       await cubit.updateStoragePath(result);
+    }
+  }
+
+  Future<void> _editDefaultDistance(BuildContext context, int current) async {
+    final controller = TextEditingController(text: '$current');
+    final cubit = context.read<SettingsCubit>();
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Default distance'),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Distance',
+                  suffixText: 'm',
+                  errorText: errorText,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final meters = int.tryParse(controller.text.trim());
+                    if (meters == null || meters <= 0) {
+                      setState(() => errorText = 'Enter a distance in meters.');
+                      return;
+                    }
+                    Navigator.of(context).pop(meters);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).whenComplete(controller.dispose);
+    if (!context.mounted) return;
+    if (result != null) {
+      await cubit.updateDefaultDistance(result);
     }
   }
 }
